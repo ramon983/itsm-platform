@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+  letter-spacing: -0.006em;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+@layer components {
+  .az-chip {
+    @apply inline-flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs text-slate-200 transition hover:border-white/[0.16];
+  }
+}
+
+@keyframes az-slide-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes az-pop-in {
+  from { transform: translateY(4px) scale(0.98); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.az-slide-in { animation: az-slide-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.az-pop-in { animation: az-pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .az-slide-in, .az-pop-in, .animate-pulse { animation: none !important; }
+}

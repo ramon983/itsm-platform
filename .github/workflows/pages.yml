@@ -1,10 +1,9 @@
 name: pages
 
-# Publishes the AdminZero interactive prototype (wireframes/) to GitHub Pages from the develop branch.
+# Publishes the AdminZero agent dashboard (Next.js static export) to GitHub Pages from develop.
 on:
   push:
     branches: [develop]
-    paths: ["wireframes/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -21,15 +20,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Assemble site
-        run: |
-          mkdir -p _site
-          cp -R wireframes/. _site/
-          test -f _site/index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Static export
+        run: npm run build
+        env:
+          PAGES_BASE_PATH: /itsm-platform
+      - run: touch out/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: out
 
   deploy:
     needs: build
