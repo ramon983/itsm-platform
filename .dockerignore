@@ -1,4 +1,10 @@
+# Root image = static Nginx site (wireframes/). Never ship backend source or repo metadata.
 .git
-  .gitignore
-  README.md
-  Dockerfile
+.github
+.gitignore
+.dockerignore
+README.md
+Dockerfile
+backend
+**/.env
+**/.venv

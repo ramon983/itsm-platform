@@ -41,6 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t adminzero-api:${{ github.sha }} backend
+      - run: docker build -t adminzero-site:${{ github.sha }} .   # Nginx static site (prototype)
 
   deploy:
     needs: test
