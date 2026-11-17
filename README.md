@@ -38,3 +38,5 @@ Auth: the API expects an identity-aware proxy in front of it that sets `X-Actor-
 
 ## Prototype
 `wireframes/index.html` is a self-contained interactive prototype with no backend, so it can be embedded in Google Sites (Insert → Embed → Embed code).
+
+**Live prototype:** https://ramon983.github.io/itsm-platform/. `.github/workflows/pages.yml` redeploys it on every push to `develop` that changes `wireframes/`.
