@@ -26,6 +26,7 @@ describe('platform navigation & modules', () => {
     render(<Home />);
     expect(within(nav()).getByRole('button', { name: /^SaaS apps/ })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /^Admin console/ }));
+    await user.click(within(screen.getByRole('navigation', { name: 'Admin sections' })).getByRole('button', { name: /Modules/ }));
     await user.click(screen.getByRole('switch', { name: 'Torii SaaS module' }));
     await user.click(screen.getByRole('switch', { name: 'Dual AI Agents module' }));
     expect(within(nav()).queryByRole('button', { name: /^SaaS apps/ })).not.toBeInTheDocument();

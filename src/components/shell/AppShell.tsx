@@ -25,6 +25,7 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { CommandPalette } from '@/components/shell/CommandPalette';
+import { KeyboardShortcuts } from '@/components/shell/KeyboardShortcuts';
 import { ThemeSwitcher, useApplyTheme } from '@/components/shell/ThemeSwitcher';
 import { AssetInspectorDrawer } from '@/components/inspectors/AssetInspectorDrawer';
 import { JitAccessModal } from '@/components/inspectors/JitAccessModal';
@@ -72,10 +73,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-dvh overflow-hidden bg-canvas text-slate-100">
+      <a href="#main" className="sr-only-focusable fixed left-3 top-3 z-[70] rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-onaccent">Skip to main content</a>
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
-        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+        <main id="main" tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto">{children}</main>
       </div>
       <TicketInspectorDrawer />
       <AssetInspectorDrawer />
@@ -153,7 +155,7 @@ function Sidebar() {
       <item.icon className="size-4 shrink-0" />
       {!collapsed && <span className="flex-1 truncate text-left">{item.label}</span>}
       {!collapsed && item.badge && (
-        <span className={clsx('rounded-md px-1.5 font-mono text-[10px]', item.tone === 'rose' ? 'animate-pulse bg-rose-500/15 text-rose-300' : item.tone === 'amber' ? 'bg-amber-400/15 text-amber-200' : 'bg-white/[0.06] text-slate-400')}>
+        <span className={clsx('rounded-md px-1.5 font-mono text-[10px]', item.tone === 'rose' ? 'bg-rose-500/15 text-rose-300' : item.tone === 'amber' ? 'bg-amber-400/15 text-amber-200' : 'bg-white/[0.06] text-slate-400')}>
           {item.badge}
         </span>
       )}
@@ -161,9 +163,9 @@ function Sidebar() {
   );
 
   return (
-    <aside className={clsx('flex shrink-0 flex-col border-r border-white/[0.08] bg-sidebar transition-[width] duration-200', collapsed ? 'w-[60px]' : 'w-60')}>
+    <aside aria-label="Primary" className={clsx('flex shrink-0 flex-col border-r border-white/[0.08] bg-sidebar transition-[width] duration-200', collapsed ? 'w-[60px]' : 'w-60')}>
       <div className="flex h-14 items-center gap-2 border-b border-white/[0.06] px-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-indigo-600 font-mono text-sm font-bold">A0</span>
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-indigo-600 font-mono text-sm font-bold text-onaccent">A0</span>
         {!collapsed && (
           <div className="min-w-0 leading-tight">
             <p className="text-sm font-semibold tracking-tight">AdminZero</p>
@@ -220,7 +222,7 @@ function XpBar({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="rounded-xl border border-amber-400/15 bg-gradient-to-br from-amber-400/[0.08] to-transparent p-2.5">
       <div className="flex items-center gap-2 text-xs"><Trophy className="size-3.5 text-amber-400" /><span className="font-medium text-slate-200">{p.name}</span></div>
-      <p className="mt-1 text-[11px] text-amber-200/80">Level {p.level} • {p.title} • <span className="font-mono">{p.xp.toLocaleString()} XP</span></p>
+      <p className="mt-1 text-[11px] text-amber-200">Level {p.level} • {p.title} • <span className="font-mono">{p.xp.toLocaleString()} XP</span></p>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label="XP to next level">
         <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-700" style={{ width: `${pct}%` }} />
       </div>
@@ -255,6 +257,7 @@ function TopBar() {
       </button>
 
       <div className="ml-auto flex items-center gap-2">
+        <KeyboardShortcuts />
         <ThemeSwitcher />
         {flags.ai_agents && (
           <button type="button" onClick={() => setView('admin')} className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-sky-500/30 px-2.5 py-1 text-[11px] font-medium text-sky-200 md:flex" title="AI autonomy — change in Admin → AI & grounding">

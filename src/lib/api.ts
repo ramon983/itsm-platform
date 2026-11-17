@@ -34,7 +34,7 @@ export interface IntakeApiResponse {
     priority: 'P1' | 'P2' | 'P3' | 'P4';
     english_summary_for_agent: string;
     required_approvals: string[];
-    recommended_swarm_group: 'Network & Identity' | 'Endpoint & Mac' | 'SaaS & Cloud Ops' | 'Security & SIEM';
+    recommended_swarm_group: string;
     clarifying_question: string | null;
     self_service_kb_ids: string[];
   };
@@ -68,7 +68,7 @@ export interface SiemApiResponse {
     priority: 'P1' | 'P2' | 'P3' | 'P4';
     title: string;
     template_id: string;
-    swarm_squad: 'Network & Identity' | 'Endpoint & Mac' | 'SaaS & Cloud Ops' | 'Security & SIEM';
+    swarm_squad: string;
     requester_name: string;
     requester_email: string;
     linked_asset_id: string | null;

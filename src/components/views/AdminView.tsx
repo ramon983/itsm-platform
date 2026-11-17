@@ -2,7 +2,9 @@
 
 import clsx from 'clsx';
 import {
+  Accessibility,
   Blocks,
+  Building2,
   Bot,
   Download,
   FileClock,
@@ -24,7 +26,9 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { AccessibilityTab } from '@/components/admin/AccessibilityTab';
 import { ApiPlayground } from '@/components/admin/ApiPlayground';
+import { OrganizationTab } from '@/components/admin/OrganizationTab';
 import { Button, Card, Field, StatusBadge, inputClass } from '@/components/ui/primitives';
 import { CURRENT_AGENT } from '@/data/seed';
 import { useApiHealth } from '@/hooks/useApiHealth';
@@ -32,7 +36,7 @@ import { useNow } from '@/hooks/useNow';
 import { ACTION_LABEL, FIELD_LABEL, FIELD_OPTIONS, TRIGGER_LABEL } from '@/lib/automation';
 import { COUNTRY_NAMES, flag } from '@/lib/holidays';
 import { timeAgo } from '@/lib/metrics';
-import { SWARM_SQUADS, TICKET_STATUSES } from '@/lib/rules';
+import { TICKET_STATUSES } from '@/lib/rules';
 import { MAX_CUSTOM_FIELDS, MODULE_LABEL, usePlatformStore } from '@/store/usePlatformStore';
 import type {
   AiSettings,
@@ -49,6 +53,7 @@ import type {
 } from '@/types/platform';
 
 const TABS = [
+  ['organization', Building2, 'Organization'],
   ['modules', Blocks, 'Modules'],
   ['people', Users, 'People & squads'],
   ['sla', Gauge, 'SLA policies'],
@@ -58,11 +63,12 @@ const TABS = [
   ['integrations', Plug, 'Integrations'],
   ['api', Terminal, 'API & webhooks'],
   ['audit', FileClock, 'Audit log'],
+  ['accessibility', Accessibility, 'Accessibility'],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
 export function AdminView() {
-  const [tab, setTab] = useState<Tab>('modules');
+  const [tab, setTab] = useState<Tab>('organization');
   return (
     <div className="grid h-full min-h-0 md:grid-cols-[220px_1fr]">
       <nav className="border-b border-white/[0.08] p-3 md:border-b-0 md:border-r" aria-label="Admin sections">
@@ -84,7 +90,9 @@ export function AdminView() {
       </nav>
       <div className="min-h-0 overflow-y-auto p-5">
         <div className="mx-auto max-w-5xl">
+          {tab === 'organization' && <OrganizationTab />}
           {tab === 'modules' && <ModulesTab />}
+          {tab === 'accessibility' && <AccessibilityTab />}
           {tab === 'people' && <PeopleTab />}
           {tab === 'sla' && <SlaTab />}
           {tab === 'automations' && <AutomationsTab />}
@@ -123,7 +131,7 @@ function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onCh
       aria-label={label}
       disabled={disabled}
       onClick={onChange}
-      className={clsx('relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60', checked ? 'bg-indigo-600' : 'bg-white/[0.12]')}
+      className={clsx('relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60', checked ? 'bg-indigo-600' : 'bg-slate-500')}
     >
       <span className={clsx('absolute top-0.5 size-5 rounded-full bg-onaccent shadow-sm transition-all', checked ? 'left-[22px]' : 'left-0.5')} />
     </button>
@@ -172,11 +180,12 @@ function ModulesTab() {
 // ------------------------------------------------------------------ people
 
 function PeopleTab() {
+  const squads = usePlatformStore((s) => s.squads);
   const users = usePlatformStore((s) => s.users);
   const updateUser = usePlatformStore((s) => s.updateUser);
   const addUser = usePlatformStore((s) => s.addUser);
   const tickets = usePlatformStore((s) => s.tickets);
-  const [form, setForm] = useState({ name: '', email: '', role: 'Agent' as Role, squad: 'Endpoint & Mac' as SwarmSquad, country: 'US', timezone: 'America/New_York' });
+  const [form, setForm] = useState({ name: '', email: '', role: 'Agent' as Role, squad: (squads[0] ?? 'IT') as SwarmSquad, country: 'US', timezone: 'America/New_York' });
   const load = (name: string) => tickets.filter((t) => t.status !== 'RESOLVED_KB_LINKED' && t.activeSwarmAgents.includes(name)).length;
 
   return (
@@ -197,7 +206,7 @@ function PeopleTab() {
                 </td>
                 <td className="px-3 py-2">
                   <select aria-label={`Squad for ${u.name}`} value={u.squad} onChange={(e) => updateUser(u.email, { squad: e.target.value as SwarmSquad })} className={clsx(inputClass, 'h-8 py-1 text-xs')}>
-                    {SWARM_SQUADS.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}
+                    {squads.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}
                   </select>
                 </td>
                 <td className="px-3 py-2">
@@ -228,7 +237,7 @@ function PeopleTab() {
             <select className={inputClass} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>{(['Agent', 'Approver', 'Admin'] as const).map((r) => <option key={r} className="bg-slate-900">{r}</option>)}</select>
           </Field>
           <Field label="Squad">
-            <select className={inputClass} value={form.squad} onChange={(e) => setForm({ ...form, squad: e.target.value as SwarmSquad })}>{SWARM_SQUADS.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}</select>
+            <select className={inputClass} value={form.squad} onChange={(e) => setForm({ ...form, squad: e.target.value as SwarmSquad })}>{squads.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}</select>
           </Field>
           <Field label="Country (holidays)">
             <select className={inputClass} value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>{Object.entries(COUNTRY_NAMES).map(([cc, name]) => <option key={cc} value={cc} className="bg-slate-900">{flag(cc)} {name}</option>)}</select>
@@ -252,7 +261,7 @@ function SlaTab() {
       <Card className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-white/[0.06] text-left text-[11px] uppercase tracking-wider text-slate-500">
-            <tr><th className="px-3 py-2 font-medium">Priority</th><th className="px-3 py-2 font-medium">First response (min)</th><th className="px-3 py-2 font-medium">Resolution (min)</th><th className="px-3 py-2 font-medium">Current</th><th /></tr>
+            <tr><th className="px-3 py-2 font-medium">Priority</th><th className="px-3 py-2 font-medium">First response (min)</th><th className="px-3 py-2 font-medium">Resolution (min)</th><th className="px-3 py-2 font-medium">Current</th><th><span className="sr-only">Actions</span></th></tr>
           </thead>
           <tbody>
             {policies.map((p) => {
@@ -413,7 +422,7 @@ function FieldsTab() {
         </div>
         <table className="w-full text-sm">
           <thead className="text-left text-[11px] uppercase tracking-wider text-slate-500">
-            <tr><th className="px-3 py-2 font-medium">Field</th><th className="px-3 py-2 font-medium">Applies to</th><th className="px-3 py-2 font-medium">Filled (30d)</th><th className="px-3 py-2 font-medium">Required</th><th className="px-3 py-2 font-medium">Health</th><th /></tr>
+            <tr><th className="px-3 py-2 font-medium">Field</th><th className="px-3 py-2 font-medium">Applies to</th><th className="px-3 py-2 font-medium">Filled (30d)</th><th className="px-3 py-2 font-medium">Required</th><th className="px-3 py-2 font-medium">Health</th><th><span className="sr-only">Actions</span></th></tr>
           </thead>
           <tbody>
             {fields.map((x) => {

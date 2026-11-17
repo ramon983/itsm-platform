@@ -8,7 +8,7 @@ import { HandoffContextModal } from '@/components/tickets/HandoffContextModal';
 import { CHANNEL_ICON } from '@/components/tickets/TicketInspectorDrawer';
 import { AvatarStack, PriorityBadge, SlaTimer, StatusBadge } from '@/components/ui/primitives';
 import { useNow } from '@/hooks/useNow';
-import { STATUS_LABEL, SWARM_SQUADS, TICKET_STATUSES } from '@/lib/rules';
+import { STATUS_LABEL, TICKET_STATUSES } from '@/lib/rules';
 import { liveSlaSeconds } from '@/lib/sla';
 import { usePlatformStore, type BoardFilter } from '@/store/usePlatformStore';
 import type { SwarmSquad, Ticket } from '@/types/platform';
@@ -26,6 +26,7 @@ export function matches(t: Ticket, f: BoardFilter): boolean {
 }
 
 export function SwarmBoard({ onOpen, types }: { onOpen?: (ticketId: string) => void; types?: Ticket['type'][] }) {
+  const squads = usePlatformStore((s) => s.squads);
   const tickets = usePlatformStore((s) => s.tickets);
   const anchors = usePlatformStore((s) => s.slaAnchors);
   const filter = usePlatformStore((s) => s.boardFilter);
@@ -68,17 +69,18 @@ export function SwarmBoard({ onOpen, types }: { onOpen?: (ticketId: string) => v
           onChange={(e) => setFilter({ query: e.target.value })}
           placeholder="Filter by ID, requester, asset…"
           aria-label="Filter tickets"
-          className="ml-auto h-8 w-56 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-xs text-slate-100 outline-none placeholder:text-slate-500 focus:border-indigo-500/60"
+          className="ml-auto h-8 w-56 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-indigo-500/60"
         />
       </div>
       <p className="mb-3 text-xs text-slate-500">
-        Columns are swarm squads, never individual assignees. Drag a card to another squad to hand it off — you’ll be asked for context.
+        {squads.length > 1 ? 'Columns are swarm squads, never individual assignees. Drag a card to another squad to hand it off — you’ll be asked for context. Keyboard: open a card and change its squad.' : 'Solo mode: columns are statuses. Open a card to change its status.'}
       </p>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {SWARM_SQUADS.map((squad) => {
-          const cards = visible.filter((t) => t.swarmSquad === squad).sort((a, b) => sortKey(a) - sortKey(b));
-          const squadAgents = Array.from(new Set(tickets.filter((t) => t.swarmSquad === squad && t.status !== 'RESOLVED_KB_LINKED').flatMap((t) => t.activeSwarmAgents)));
+        {(squads.length > 1 ? squads : TICKET_STATUSES).map((squad) => {
+          const byStatus = squads.length <= 1;
+          const cards = visible.filter((t) => (byStatus ? t.status === squad : t.swarmSquad === squad)).sort((a, b) => sortKey(a) - sortKey(b));
+          const squadAgents = Array.from(new Set(tickets.filter((t) => (byStatus ? t.status === squad : t.swarmSquad === squad) && t.status !== 'RESOLVED_KB_LINKED').flatMap((t) => t.activeSwarmAgents)));
           return (
             <div
               key={squad}
@@ -87,14 +89,14 @@ export function SwarmBoard({ onOpen, types }: { onOpen?: (ticketId: string) => v
                 setOverSquad(squad);
               }}
               onDragLeave={() => setOverSquad((s) => (s === squad ? null : s))}
-              onDrop={() => drop(squad)}
+              onDrop={() => !byStatus && drop(squad)}
               className={clsx(
                 'flex min-h-[420px] flex-col rounded-xl border bg-sunken p-2.5 transition',
                 overSquad === squad && dragging ? 'border-indigo-500/50 bg-indigo-500/[0.05]' : 'border-white/[0.08]',
               )}
             >
               <div className="mb-2.5 flex items-center gap-2 px-1">
-                <span className="text-sm font-semibold tracking-tight">{squad}</span>
+                <span className="text-sm font-semibold tracking-tight">{byStatus ? STATUS_LABEL[squad as keyof typeof STATUS_LABEL] : squad}</span>
                 <span className="rounded-md bg-white/[0.06] px-1.5 font-mono text-[10px] text-slate-400">{cards.length}</span>
                 <span className="ml-auto"><AvatarStack names={squadAgents} max={4} /></span>
               </div>

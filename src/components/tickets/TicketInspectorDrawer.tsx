@@ -26,7 +26,7 @@ import { ResolveKbModal } from '@/components/tickets/ResolveKbModal';
 import { TicketTimeline, langName } from '@/components/tickets/TicketTimeline';
 import { AvatarStack, Button, Drawer, Kbd, PriorityBadge, SlaTimer, StatusBadge } from '@/components/ui/primitives';
 import { CURRENT_AGENT } from '@/data/seed';
-import { ALLOWED_TRANSITIONS, STATUS_LABEL, SWARM_SQUADS, TICKET_STATUSES } from '@/lib/rules';
+import { ALLOWED_TRANSITIONS, STATUS_LABEL, TICKET_STATUSES } from '@/lib/rules';
 import { usePlatformStore } from '@/store/usePlatformStore';
 import type { SwarmSquad, Ticket, TicketStatus } from '@/types/platform';
 
@@ -52,6 +52,7 @@ export function TicketInspectorDrawer() {
 }
 
 function TicketInspector({ ticket, onClose }: { ticket: Ticket; onClose: () => void }) {
+  const squads = usePlatformStore((s) => s.squads);
   const flags = usePlatformStore((s) => s.flags);
   const transitionTicket = usePlatformStore((s) => s.transitionTicket);
   const executeMacro = usePlatformStore((s) => s.executeMacro);
@@ -150,7 +151,7 @@ function TicketInspector({ ticket, onClose }: { ticket: Ticket; onClose: () => v
               aria-label="Status"
               value={ticket.status}
               onChange={(e) => changeStatus(e.target.value as TicketStatus)}
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-sm text-slate-100 outline-none focus:border-indigo-500/60"
+              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-sm text-slate-100 focus:border-indigo-500/60"
             >
               {TICKET_STATUSES.map((s) => (
                 <option key={s} value={s} disabled={s !== ticket.status && !ALLOWED_TRANSITIONS[ticket.status].includes(s)} className="bg-slate-900">
@@ -164,11 +165,11 @@ function TicketInspector({ ticket, onClose }: { ticket: Ticket; onClose: () => v
             <select
               aria-label="Swarm squad"
               value={ticket.swarmSquad}
-              disabled={resolved}
+              disabled={resolved || squads.length < 2}
               onChange={(e) => setHandoff({ open: true, squad: e.target.value as SwarmSquad })}
-              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-sm text-slate-100 outline-none focus:border-indigo-500/60 disabled:opacity-50"
+              className="w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-sm text-slate-100 focus:border-indigo-500/60 disabled:opacity-50"
             >
-              {SWARM_SQUADS.map((s) => (
+              {squads.map((s) => (
                 <option key={s} value={s} className="bg-slate-900">{s}</option>
               ))}
             </select>
@@ -207,7 +208,7 @@ function TicketInspector({ ticket, onClose }: { ticket: Ticket; onClose: () => v
           {kb && (
             <span className="az-chip border-emerald-500/20 text-emerald-300" title={kb.summary}>
               <BookOpen className="size-3.5" /><span className="font-mono">{kb.id}</span>
-              <span className="text-emerald-200/70">{kb.title}</span>
+              <span className="text-emerald-200">{kb.title}</span>
             </span>
           )}
         </section>
@@ -224,7 +225,7 @@ function TicketInspector({ ticket, onClose }: { ticket: Ticket; onClose: () => v
             <Button size="sm" onClick={() => joinSwarm(ticket.id)} disabled={ticket.activeSwarmAgents.includes(CURRENT_AGENT) || resolved}>
               <UserPlus className="size-3.5" />Join
             </Button>
-            <Button size="sm" onClick={() => setHandoff({ open: true })} disabled={resolved}>
+            <Button size="sm" onClick={() => setHandoff({ open: true })} disabled={resolved || squads.length < 2} title={squads.length < 2 ? 'Solo mode — nothing to hand off to' : undefined}>
               <ArrowRightLeft className="size-3.5" />Hand off
             </Button>
           </div>
@@ -236,7 +237,7 @@ function TicketInspector({ ticket, onClose }: { ticket: Ticket; onClose: () => v
               <Sparkles className="size-3.5" />AI-recommended remediation · human approval required
             </div>
             <p className="mt-1.5 text-sm text-slate-100">{ticket.recommendedMacro.label}</p>
-            <pre className="mt-2 overflow-x-auto rounded-md bg-code px-2 py-1.5 font-mono text-[11px] text-slate-400">$ {ticket.recommendedMacro.command}</pre>
+            <pre tabIndex={0} className="mt-2 overflow-x-auto rounded-md bg-code px-2 py-1.5 font-mono text-[11px] text-slate-400">$ {ticket.recommendedMacro.command}</pre>
             <div className="mt-2.5 flex flex-wrap gap-2">
               <Button size="sm" variant="primary" onClick={() => executeMacro(ticket.id)} disabled={resolved}>
                 <Zap className="size-3.5" />Approve & execute <Kbd>E</Kbd>

@@ -8,7 +8,6 @@ import { AvatarStack, Card } from '@/components/ui/primitives';
 import { useNow } from '@/hooks/useNow';
 import { computeKpis } from '@/lib/metrics';
 import { onCallNow } from '@/lib/people';
-import { SWARM_SQUADS } from '@/lib/rules';
 import { liveSlaSeconds } from '@/lib/sla';
 import { usePlatformStore } from '@/store/usePlatformStore';
 
@@ -69,10 +68,11 @@ export function Last7DaysCard() {
 }
 
 export function OnCallCard() {
+  const squads = usePlatformStore((s) => s.squads);
   const users = usePlatformStore((s) => s.users);
   const timeOff = usePlatformStore((s) => s.timeOff);
   const now = useNow();
-  const rota = onCallNow(users, timeOff, SWARM_SQUADS, now);
+  const rota = onCallNow(users, timeOff, squads, now);
   const handover = rota[0]?.handoverAt;
   return (
     <Shell icon={<PhoneCall className="size-4 text-emerald-400" />} title="On call now" accent="bg-emerald-500/20">

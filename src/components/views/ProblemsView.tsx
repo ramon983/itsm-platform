@@ -8,7 +8,6 @@ import { CopilotPanel } from '@/components/ai/CopilotPanel';
 import { AvatarStack, Button, Card, Field, Modal, PriorityBadge, StatusBadge, inputClass } from '@/components/ui/primitives';
 import { useNow } from '@/hooks/useNow';
 import { formatDuration, timeAgo } from '@/lib/metrics';
-import { SWARM_SQUADS } from '@/lib/rules';
 import { PROBLEM_TRANSITIONS, usePlatformStore } from '@/store/usePlatformStore';
 import type { Problem, ProblemStatus, SwarmSquad, TicketPriority } from '@/types/platform';
 
@@ -217,12 +216,13 @@ function NewProblemModal({ open, onClose, onCreated }: { open: boolean; onClose:
 }
 
 function NewProblemForm({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+  const squads = usePlatformStore((s) => s.squads);
   const tickets = usePlatformStore((s) => s.tickets);
   const createProblem = usePlatformStore((s) => s.createProblem);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TicketPriority>('P3');
-  const [squad, setSquad] = useState<SwarmSquad>('Network & Identity');
+  const [squad, setSquad] = useState<SwarmSquad>(squads[0] ?? 'IT');
   const [linked, setLinked] = useState<string[]>([]);
   const valid = title.trim().length >= 8 && description.trim().length >= 10;
   return (
@@ -245,7 +245,7 @@ function NewProblemForm({ onClose, onCreated }: { onClose: () => void; onCreated
         </Field>
         <Field label="Owning squad">
           <select className={inputClass} value={squad} onChange={(e) => setSquad(e.target.value as SwarmSquad)}>
-            {SWARM_SQUADS.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}
+            {squads.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}
           </select>
         </Field>
       </div>

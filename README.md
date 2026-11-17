@@ -21,6 +21,24 @@ AdminZero is built as a platform: every module can be turned on and off in **Adm
 
 **AI Copilot.** Inside Tickets, Problems and Changes, the copilot shows similar closed tickets and what fixed them, KB matches with a confidence score and the reasons for it, the next best action, and bilingual reply drafts. Every suggestion cites its source. If nothing internal matches, it says so; a labelled internet fallback covers basic IT questions only. Macros always need a human to run them.
 
+## Accessibility
+
+AdminZero targets **WCAG 2.2 AA** in Light and Dark themes and **AAA contrast (7:1)** in the High contrast theme
+(picked automatically when the OS asks for more contrast). Every CI build runs axe-core in real Chrome on all 11 pages in
+all three themes and fails on any violation (`npm run a11y`), and unit tests run axe on every page. Keyboard users get a
+skip link, focus-trapped dialogs, visible focus everywhere and a full shortcut set (`?`). The in-app statement lives at
+**Admin → Accessibility**, including what isn't done yet (manual screen-reader testing, third-party VPAT).
+
+## One-person IT shop or 500-person IT org
+
+**Admin → Organization** picks a profile:
+
+- **Solo:** one "IT" team, no handoffs, and you can self-approve your changes with a reason that goes in the audit log. AI auto-resolves low-risk requests and the layout is compact.
+- **Team:** a few squads, with handoffs that carry context.
+- **Enterprise:** strict separation of duties, as many squads as you need.
+
+You can add, rename and remove squads. Their tickets, people and articles move with them.
+
 ## Earlier phases
 - **App shell.** A collapsible sidebar that shows only the modules you've enabled, with live counts. It also has a Level / XP bar and a Reset Demo State button. The top bar holds the ⌘K / Ctrl+K command palette, toggle pills for each module, and a Secret Manager status indicator.
 - **Unified swarming dashboard.** Five KPI cards (Open Incidents, First Contact Resolution, MTTR, SLA Compliance, Monthly SaaS Spend with reclaimable savings) that recalculate from live state.

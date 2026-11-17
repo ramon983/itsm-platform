@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import { ChevronLeft, ChevronRight, ImagePlus, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImagePlus, Pause, Play, Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Button, Card, Field, Modal, inputClass } from '@/components/ui/primitives';
@@ -35,7 +35,8 @@ export function Spotlight() {
   const giveKudos = usePlatformStore((s) => s.giveKudos);
   const removeSpotlight = usePlatformStore((s) => s.removeSpotlight);
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [paused, setPaused] = useState(false); // hover/focus pause
+  const [stopped, setStopped] = useState(false); // user pressed Pause
   const [adding, setAdding] = useState(false);
   const [burst, setBurst] = useState(0);
   const count = entries.length;
@@ -43,10 +44,10 @@ export function Spotlight() {
   const e = entries[i];
 
   useEffect(() => {
-    if (paused || count < 2) return;
+    if (paused || stopped || count < 2) return;
     const timer = setInterval(() => setIndex((x) => x + 1), 9000);
     return () => clearInterval(timer);
-  }, [paused, count]);
+  }, [paused, stopped, count]);
 
   return (
     <Card className="overflow-hidden">
@@ -56,7 +57,7 @@ export function Spotlight() {
         <Button size="sm" className="ml-auto" onClick={() => setAdding(true)}><Plus className="size-3.5" />Add someone</Button>
       </div>
       {e ? (
-        <div className="grid gap-0 md:grid-cols-[280px_1fr]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+        <div className="grid gap-0 md:grid-cols-[280px_1fr]" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)} aria-roledescription="carousel" aria-label="Team and pets spotlight">
           <div className={clsx('relative grid aspect-[4/3] place-items-center bg-gradient-to-br md:aspect-auto md:min-h-[220px]', e.kind === 'pet' ? 'from-amber-400/25 via-pink-500/15 to-indigo-500/20' : 'from-indigo-500/25 via-sky-500/15 to-emerald-400/20')}>
             {e.photo ? (
               // eslint-disable-next-line @next/next/no-img-element -- user-uploaded data URL, nothing to optimise
@@ -82,6 +83,7 @@ export function Spotlight() {
               </button>
               <span className="text-[11px] text-slate-500">Added by {e.addedBy}</span>
               <span className="ml-auto flex items-center gap-1">
+                <Button size="sm" variant="ghost" onClick={() => setStopped((v) => !v)} aria-label={stopped ? "Resume rotation" : "Pause rotation"} aria-pressed={stopped}>{stopped ? <Play className="size-4" /> : <Pause className="size-4" />}</Button>
                 <Button size="sm" variant="ghost" onClick={() => setIndex((x) => (x - 1 + count) % count)} aria-label="Previous"><ChevronLeft className="size-4" /></Button>
                 <span className="flex gap-1" aria-hidden>
                   {entries.map((x, n) => <span key={x.id} className={clsx('size-1.5 rounded-full', n === i ? 'bg-amber-300' : 'bg-white/20')} />)}

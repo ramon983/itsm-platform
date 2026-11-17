@@ -52,8 +52,9 @@ Jira Service Management and Torii (G2, Capterra, vendor communities) plus access
    `RESOLVED_KB_LINKED` requires linking or creating a Knowledge Base article.
 2. **No silent handoffs.** Reassigning or transferring to another swarm squad opens the mandatory `HandoffContextModal`
    (`handoffReason`, `diagnosticsAttempted`, `recommendedNextStep`) and appends a permanent Handoff Audit Card to the timeline.
-3. **No assignee silos.** Kanban boards are grouped by collaborative swarm squads (`Network & Identity`, `Endpoint & Mac`,
-   `SaaS & Cloud Ops`, `Security & SIEM`) with overlapping agent avatars — never by individual assignee.
+3. **No assignee silos.** Kanban boards are grouped by collaborative swarm squads (configurable in Admin → Organization;
+   defaults `Network & Identity`, `Endpoint & Mac`, `SaaS & Cloud Ops`, `Security & SIEM`) with overlapping agent avatars —
+   never by individual assignee. Read squads from the store (`s.squads`), never from `SWARM_SQUADS` in components.
 4. **Zero hardcoded secrets.** Backend loads `ANTHROPIC_API_KEY`, `DATABASE_URL`, `SIEM_WEBHOOK_SECRET`, `VAULT_KMS_KEY`
    from Google Cloud Secret Manager, with `.env.local` fallback only for offline dev.
 
@@ -71,6 +72,23 @@ Jira Service Management and Torii (G2, Capterra, vendor communities) plus access
   and published self-service articles deflect employees in the portal before a ticket exists.
 - Admin: modules, people & squads, SLA policies, no-code automations, fields & statuses (capped), AI & grounding,
   integrations, immutable audit log (every store mutation writes one).
+
+## Accessibility (non-negotiable — a selling point)
+- Standard: **WCAG 2.2 AA** in Light and Dark; **AAA contrast (7:1)** in the High contrast theme (`data-theme="contrast"`,
+  also picked automatically by System when the OS asks for more contrast).
+- Gates: `src/components/views/A11y.test.tsx` (axe structural rules on every page) and `npm run a11y`
+  (`scripts/a11y-audit.mjs`, axe in real Chrome on 11 pages × 3 themes; runs in CI and fails the build on any violation).
+- Rules: never `outline-none`; never convey state by colour alone; text-bearing fills use 600+/700 shades with
+  `text-onaccent`; no translucent text (`text-x/60`) or `opacity-*` on text; every modal/drawer uses `Modal`/`Drawer`
+  (focus trap + focus return); drag-and-drop always has a click/keyboard alternative; targets ≥ 24px; mark foreign-language
+  text with `lang`. Public statement: Admin → Accessibility (keep it honest — list what is not done yet).
+
+## Built by IT, for IT — and for any team size
+- Keyboard-first: `?` cheat sheet, `g`+letter navigation, `j`/`k` queue, `r` reply, `/` saved replies, ⌘K palette,
+  copy-ID buttons. Density: comfortable / compact (rem-scaled, honours zoom).
+- Org profiles (Admin → Organization): **Solo** (one "IT" squad, no handoffs, self-approve changes with an audited reason,
+  AI auto-resolves low risk, compact), **Team**, **Enterprise** (strict separation of duties, unlimited squads).
+  Squads can be added, renamed and removed; work moves with them and nothing is orphaned.
 
 ## Build phases
 1. Scaffold, pre-seeded reactive store, app shell, swarming dashboard. ✅

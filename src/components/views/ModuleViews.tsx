@@ -67,7 +67,7 @@ export function SaasView() {
       <Card className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-white/[0.06] text-left text-[11px] uppercase tracking-wider text-slate-500">
-            <tr><th className="px-3 py-2 font-medium">App</th><th className="px-3 py-2 font-medium">Seats</th><th className="px-3 py-2 font-medium">Annual</th><th className="px-3 py-2 font-medium">Renewal</th><th className="px-3 py-2 font-medium">OAuth risk</th><th /></tr>
+            <tr><th className="px-3 py-2 font-medium">App</th><th className="px-3 py-2 font-medium">Seats</th><th className="px-3 py-2 font-medium">Annual</th><th className="px-3 py-2 font-medium">Renewal</th><th className="px-3 py-2 font-medium">OAuth risk</th><th><span className="sr-only">Actions</span></th></tr>
           </thead>
           <tbody>
             {list.map((a) => (

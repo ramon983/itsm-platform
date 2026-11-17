@@ -1,33 +1,40 @@
 'use client';
 
 import clsx from 'clsx';
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { Contrast, Monitor, Moon, Sun } from 'lucide-react';
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { usePlatformStore, type ThemePreference } from '@/store/usePlatformStore';
 
 // Guarded: some embedded browsers and test environments lack matchMedia — fall back to dark.
-const media = () => (typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: dark)') : null);
+const mq = (q: string) => (typeof window.matchMedia === 'function' ? window.matchMedia(q) : null);
+const media = () => mq('(prefers-color-scheme: dark)');
+const moreContrast = () => mq('(prefers-contrast: more)');
 const subscribe = (cb: () => void) => {
-  const m = media();
-  m?.addEventListener('change', cb);
-  return () => m?.removeEventListener('change', cb);
+  const list = [media(), moreContrast()];
+  list.forEach((m) => m?.addEventListener('change', cb));
+  return () => list.forEach((m) => m?.removeEventListener('change', cb));
 };
 
 /** Applies the user's theme to <html data-theme> and follows the OS when set to System. */
 export function useApplyTheme() {
   const pref = usePlatformStore((s) => s.themePreference);
   const systemDark = useSyncExternalStore(subscribe, () => media()?.matches ?? true, () => true);
-  const resolved = pref === 'system' ? (systemDark ? 'dark' : 'light') : pref;
+  const systemContrast = useSyncExternalStore(subscribe, () => moreContrast()?.matches ?? false, () => false);
+  // "System" honours the OS: increased-contrast requests win, then light/dark.
+  const resolved = pref === 'system' ? (systemContrast ? 'contrast' : systemDark ? 'dark' : 'light') : pref;
+  const density = usePlatformStore((s) => s.density);
   useEffect(() => {
     document.documentElement.dataset.theme = resolved;
-  }, [resolved]);
+    document.documentElement.dataset.density = density;
+  }, [resolved, density]);
   return resolved;
 }
 
 const OPTIONS: { key: ThemePreference; icon: typeof Sun; label: string }[] = [
   { key: 'light', icon: Sun, label: 'Light' },
   { key: 'dark', icon: Moon, label: 'Dark' },
+  { key: 'contrast', icon: Contrast, label: 'High contrast' },
   { key: 'system', icon: Monitor, label: 'Match system' },
 ];
 
@@ -45,7 +52,7 @@ export function ThemeSwitcher() {
           aria-label={label}
           title={label}
           onClick={() => setPref(key)}
-          className={clsx('grid size-7 place-items-center rounded-full transition', pref === key ? 'bg-white/[0.1] text-slate-100' : 'text-slate-500 hover:text-slate-200')}
+          className={clsx('grid size-8 place-items-center rounded-full transition', pref === key ? 'bg-white/[0.1] text-slate-100' : 'text-slate-500 hover:text-slate-200')}
         >
           <Icon className="size-3.5" />
         </button>

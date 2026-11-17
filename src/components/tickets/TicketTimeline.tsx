@@ -62,7 +62,7 @@ function MessageCard({ message: m, showTranslation, when }: { message: TicketMes
         </div>
         <p className="font-mono text-xs leading-relaxed text-slate-200">{m.originalText}</p>
         {m.metadata?.command && (
-          <pre className="mt-2 overflow-x-auto rounded-md bg-code px-2 py-1.5 font-mono text-[11px] text-emerald-300">$ {m.metadata.command}</pre>
+          <pre tabIndex={0} className="mt-2 overflow-x-auto rounded-md bg-code px-2 py-1.5 font-mono text-[11px] text-emerald-300">$ {m.metadata.command}</pre>
         )}
       </div>
     );
@@ -77,9 +77,9 @@ function MessageCard({ message: m, showTranslation, when }: { message: TicketMes
         <div className="min-w-0 text-xs">
           <span className="font-medium text-sky-300">{m.sender}</span>
           <span className="ml-2 text-slate-500">{when}</span>
-          <p className="mt-0.5 leading-relaxed text-slate-300">{m.originalText}</p>
+          <p className="mt-0.5 leading-relaxed text-slate-300" lang={m.originalLang}>{m.originalText}</p>
           {showTranslation && m.translatedText && (
-            <p className="mt-1 flex gap-1.5 text-sky-200/80">
+            <p className="mt-1 flex gap-1.5 text-sky-200">
               <Languages className="mt-0.5 size-3 shrink-0 text-sky-400" />
               <span><span className="text-sky-300">English:</span> {m.translatedText}</span>
             </p>
@@ -109,7 +109,7 @@ function MessageCard({ message: m, showTranslation, when }: { message: TicketMes
         )}
         <span className="ml-auto text-slate-500">{when}</span>
       </div>
-      <p className="text-sm leading-relaxed text-slate-100">{m.originalText}</p>
+      <p className="text-sm leading-relaxed text-slate-100" lang={m.originalLang}>{m.originalText}</p>
       {showTranslation && m.translatedText && (
         <div className="mt-2 flex gap-2 rounded-lg border border-sky-500/15 bg-sky-500/[0.06] px-2.5 py-2 text-xs text-sky-100">
           <Languages className="mt-0.5 size-3.5 shrink-0 text-sky-400" />

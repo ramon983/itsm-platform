@@ -4,8 +4,8 @@ import { ArrowRightLeft } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button, Field, Modal, inputClass } from '@/components/ui/primitives';
-import { HANDOFF_MIN, SWARM_SQUADS, validateHandoff, type HandoffInput } from '@/lib/rules';
-import { agentsForSquad, usePlatformStore } from '@/store/usePlatformStore';
+import { HANDOFF_MIN, validateHandoff, type HandoffInput } from '@/lib/rules';
+import { usePlatformStore } from '@/store/usePlatformStore';
 import type { SwarmSquad, Ticket } from '@/types/platform';
 
 interface Props {
@@ -31,8 +31,10 @@ export function HandoffContextModal({ ticket, initialSquad, open, onClose }: Pro
 }
 
 function HandoffForm({ ticket, initialSquad, onClose }: Omit<Props, 'open'>) {
+  const squads = usePlatformStore((s) => s.squads);
+  const users = usePlatformStore((s) => s.users);
   const handoffTicket = usePlatformStore((s) => s.handoffTicket);
-  const firstOther = SWARM_SQUADS.find((sq) => sq !== ticket.swarmSquad)!;
+  const firstOther = squads.find((sq) => sq !== ticket.swarmSquad) ?? ticket.swarmSquad;
   const [form, setForm] = useState<HandoffInput>({
     toSquad: initialSquad && initialSquad !== ticket.swarmSquad ? initialSquad : firstOther,
     toAgent: undefined,
@@ -70,7 +72,7 @@ function HandoffForm({ ticket, initialSquad, onClose }: Omit<Props, 'open'>) {
             value={form.toSquad}
             onChange={(e) => setForm((f) => ({ ...f, toSquad: e.target.value as SwarmSquad, toAgent: undefined }))}
           >
-            {SWARM_SQUADS.map((sq) => (
+            {squads.map((sq) => (
               <option key={sq} value={sq} className="bg-slate-900">
                 {sq}
                 {sq === ticket.swarmSquad ? ' (current)' : ''}
@@ -81,7 +83,7 @@ function HandoffForm({ ticket, initialSquad, onClose }: Omit<Props, 'open'>) {
         <Field label="Lead agent (optional)">
           <select className={inputClass} value={form.toAgent ?? ''} onChange={(e) => set('toAgent', e.target.value || undefined)}>
             <option value="" className="bg-slate-900">Whole squad swarms</option>
-            {agentsForSquad(form.toSquad).map((a) => (
+            {users.filter((u) => u.active && u.squad === form.toSquad).map((a) => (
               <option key={a.name} value={a.name} className="bg-slate-900">
                 {a.name}
               </option>

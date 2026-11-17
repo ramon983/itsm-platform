@@ -239,7 +239,7 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
                 resetConversation();
                 setPersonaEmail(e.target.value);
               }}
-              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs text-slate-100 outline-none focus:border-indigo-500/60"
+              className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-xs text-slate-100 focus:border-indigo-500/60"
             >
               {END_USERS.map((u) => (
                 <option key={u.email} value={u.email} className="bg-slate-900">
@@ -362,7 +362,7 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
                 }
               }}
               placeholder={phase === 'submitted' ? 'Start a new request…' : 'Describe your issue in any language…'}
-              className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-slate-100 outline-none placeholder:text-slate-500"
+              className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500"
             />
             {input.trim().length >= 8 && (
               <span className="mb-2 rounded bg-white/[0.06] px-1.5 font-mono text-[10px] uppercase text-slate-400" title="Detected while you type">
@@ -551,7 +551,7 @@ function InspectorSections({ analysis: a, persona, revealed, phase, submittedId,
             </p>
           )}
           {!native && (
-            <p className="mt-2 text-[11px] text-amber-300/90">
+            <p className="mt-2 text-[11px] text-amber-300">
               Native replies are available offline in {NATIVE_REPLY_LANGUAGES.map((l) => l.toUpperCase()).join(', ')}; replied in English. Connect the AI backend for {LANGUAGE_NAMES[a.detectedLanguage] ?? a.detectedLanguage}.
             </p>
           )}

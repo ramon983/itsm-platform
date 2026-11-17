@@ -7,7 +7,10 @@ export type TicketStatus =
   | 'WAITING_ON_VENDOR'
   | 'RESOLVED_KB_LINKED';
 export type TicketPriority = 'P1' | 'P2' | 'P3' | 'P4';
-export type SwarmSquad = 'Network & Identity' | 'Endpoint & Mac' | 'SaaS & Cloud Ops' | 'Security & SIEM';
+// Squads are configured per organisation in Admin → Organization (Solo orgs have a single "IT" squad).
+export type SwarmSquad = string;
+export type OrgProfile = 'solo' | 'team' | 'enterprise';
+export type Density = 'comfortable' | 'compact';
 
 export interface TicketMessage {
   id: string;

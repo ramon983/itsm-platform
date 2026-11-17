@@ -19,6 +19,7 @@ export const ALLOWED_TRANSITIONS: Record<TicketStatus, readonly TicketStatus[]> 
 
 export const SLA_PAUSING: ReadonlySet<TicketStatus> = new Set(['WAITING_ON_CUSTOMER', 'WAITING_ON_VENDOR']);
 
+/** Default squads for Team/Enterprise orgs. Runtime squads live in the store (`squads`). */
 export const SWARM_SQUADS: readonly SwarmSquad[] = [
   'Network & Identity',
   'Endpoint & Mac',

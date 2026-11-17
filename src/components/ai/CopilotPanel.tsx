@@ -80,7 +80,7 @@ export function CopilotPanel({ subject, kind, onInsertDraft, onInsertSteps, onRe
       {pattern && (
         <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.05] p-3 text-xs">
           <p className="font-medium text-amber-200">Recurring pattern · {pattern.p.members.length} tickets in 30 days</p>
-          <p className="mt-0.5 text-amber-100/70">“{pattern.p.label}”{pattern.p.coverage === 'uncovered' ? ' — no knowledge article yet.' : ''}</p>
+          <p className="mt-0.5 text-amber-100">“{pattern.p.label}”{pattern.p.coverage === 'uncovered' ? ' — no knowledge article yet.' : ''}</p>
           {pattern.existing ? (
             <p className="mt-1.5 text-slate-400">Tracked as <span className="font-mono text-slate-200">{pattern.existing.id}</span>.</p>
           ) : (
@@ -101,7 +101,7 @@ export function CopilotPanel({ subject, kind, onInsertDraft, onInsertSteps, onRe
         <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/[0.06] p-3">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-indigo-300"><Zap className="size-3.5" />Remediation macro · needs your approval</p>
           <p className="mt-1 text-sm text-slate-100">{subject.recommendedMacro.label}</p>
-          <pre className="mt-1.5 overflow-x-auto rounded-md bg-code px-2 py-1 font-mono text-[10px] text-slate-400">$ {subject.recommendedMacro.command}</pre>
+          <pre tabIndex={0} className="mt-1.5 overflow-x-auto rounded-md bg-code px-2 py-1 font-mono text-[10px] text-slate-400">$ {subject.recommendedMacro.command}</pre>
           <Button size="sm" variant="primary" className="mt-2" onClick={onExecuteMacro} disabled={disabled}>
             <Zap className="size-3.5" />Approve & run <Kbd>E</Kbd>
           </Button>
@@ -187,7 +187,7 @@ export function CopilotPanel({ subject, kind, onInsertDraft, onInsertSteps, onRe
         <div className="rounded-xl border border-white/[0.08] p-3">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Empathetic reply draft</p>
           <p className="mt-1.5 text-xs leading-relaxed text-slate-200" lang={result.draftReply.lang}>{result.draftReply.native}</p>
-          {result.draftReply.lang !== 'en' && <p className="mt-1 text-[11px] text-sky-200/70">EN: {result.draftReply.english}</p>}
+          {result.draftReply.lang !== 'en' && <p className="mt-1 text-[11px] text-sky-200">EN: {result.draftReply.english}</p>}
           <Button size="sm" className="mt-2" onClick={() => onInsertDraft(result.draftReply)} disabled={disabled}>Use draft</Button>
         </div>
       )}

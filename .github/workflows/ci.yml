@@ -22,6 +22,12 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Accessibility gate — axe-core in real Chrome (11 pages × dark/light/high-contrast)
+        run: |
+          (cd out && python3 -m http.server 4321 >/dev/null 2>&1 &)
+          google-chrome --headless=new --remote-debugging-port=9333 --no-sandbox --disable-gpu about:blank >/dev/null 2>&1 &
+          for i in $(seq 1 30); do curl -s http://127.0.0.1:9333/json/version >/dev/null && break; sleep 1; done
+          npm run a11y
       - name: Build container image
         run: docker build -t adminzero-web:${{ github.sha }} .
 

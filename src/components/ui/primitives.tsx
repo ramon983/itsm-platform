@@ -94,7 +94,7 @@ export function AvatarStack({ names, max = 3 }: { names: string[]; max?: number 
             title={name}
             className={clsx(
               'grid size-6 place-items-center rounded-full text-[10px] font-semibold text-onaccent ring-2 ring-surface',
-              agent?.color ?? 'bg-slate-600',
+              agent?.color ?? 'bg-slate-700',
             )}
           >
             {agent?.initials ?? name.slice(0, 2).toUpperCase()}
@@ -112,7 +112,7 @@ export function AvatarStack({ names, max = 3 }: { names: string[]; max?: number 
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="rounded border border-current/25 bg-current/10 px-1 font-mono text-[10px] opacity-80">{children}</kbd>
+    <kbd className="rounded border border-current/30 bg-current/10 px-1 font-mono text-[10px]">{children}</kbd>
   );
 }
 
@@ -145,6 +145,38 @@ export function Card({ className, children }: { className?: string; children: Re
   );
 }
 
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Keeps Tab inside an open dialog and returns focus to the opener on close (WCAG 2.1.2, 2.4.3). */
+function useFocusTrap(ref: React.RefObject<HTMLElement | null>, active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const opener = document.activeElement as HTMLElement | null;
+    const node = ref.current;
+    const focusables = () => [...(node?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])].filter((el) => el.offsetParent !== null || el === document.activeElement);
+    if (node && !node.contains(document.activeElement)) (node.querySelector<HTMLElement>('input, textarea, select, [data-autofocus]') ?? focusables()[0] ?? node).focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !node) return;
+      const items = focusables();
+      if (!items.length) return;
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (opener && document.contains(opener)) opener.focus();
+    };
+  }, [ref, active]);
+}
+
 // Modals listen in the capture phase and stop propagation, so Escape closes only the top-most layer.
 function useEscape(onClose: () => void, active: boolean, topLayer = false) {
   useEffect(() => {
@@ -160,11 +192,13 @@ function useEscape(onClose: () => void, active: boolean, topLayer = false) {
 }
 
 export function Drawer({ open, onClose, children, label }: { open: boolean; onClose: () => void; children: ReactNode; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
   useEscape(onClose, open);
+  useFocusTrap(ref, open);
   if (!open) return null;
   // Portalled to <body>: an ancestor with backdrop-filter would otherwise trap `position: fixed` inside it.
   return createPortal(
-    <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label={label}>
+    <div ref={ref} tabIndex={-1} className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label={label}>
       <button type="button" aria-label="Close drawer" className="absolute inset-0 bg-scrim" onClick={onClose} />
       <aside className="az-slide-in absolute inset-y-0 right-0 flex w-full max-w-[540px] flex-col border-l border-white/[0.08] bg-raised shadow-2xl">
         {children}
@@ -191,14 +225,12 @@ export function Modal({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEscape(onClose, open, true);
-  useEffect(() => {
-    if (open) ref.current?.querySelector<HTMLElement>('input, textarea, select, button[data-autofocus]')?.focus();
-  }, [open]);
+  useFocusTrap(ref, open);
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4" role="dialog" aria-modal="true" aria-label={title}>
       <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-scrim" onClick={onClose} />
-      <div ref={ref} className={clsx('az-pop-in relative w-full rounded-2xl border border-white/[0.1] bg-raised p-5 shadow-2xl', width)}>
+      <div ref={ref} tabIndex={-1} className={clsx('az-pop-in relative w-full rounded-2xl border border-white/[0.1] bg-raised p-5 shadow-2xl', width)}>
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-slate-100">{title}</h2>
@@ -264,5 +296,6 @@ export function Field({ label, error, hint, children }: { label: string; error?:
   );
 }
 
+// Field boundaries use slate-500 so they reach 3:1 against every surface (WCAG 1.4.11); focus uses the global outline.
 export const inputClass =
-  'w-full rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 outline-none transition focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20';
+  'w-full rounded-lg border border-slate-500 bg-white/[0.03] px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-indigo-500';

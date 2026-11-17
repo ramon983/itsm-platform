@@ -8,13 +8,13 @@ import { Button, Card, Field, Modal, inputClass } from '@/components/ui/primitiv
 import { useNow } from '@/hooks/useNow';
 import { formatDuration, timeAgo } from '@/lib/metrics';
 import { detectPatterns, type Pattern } from '@/lib/patterns';
-import { SWARM_SQUADS } from '@/lib/rules';
 import { usePlatformStore } from '@/store/usePlatformStore';
 import type { KbArticle, SwarmSquad } from '@/types/platform';
 
 type Draft = { id?: string; title: string; summary: string; squad: SwarmSquad; steps: string; keywords: string[]; selfService: boolean; sourcePattern?: string; privileged?: boolean };
 
 export function KnowledgeView() {
+  const squads = usePlatformStore((s) => s.squads);
   const aiOn = usePlatformStore((s) => s.flags.ai_agents);
   const [tab, setTab] = useState<'insights' | 'articles'>(aiOn ? 'insights' : 'articles');
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -34,7 +34,7 @@ export function KnowledgeView() {
             <h1 className="text-xl font-semibold tracking-tight">Knowledge</h1>
             <p className="text-sm text-slate-400">Every resolution makes the next one faster — and the best ones answer employees before they reach a human.</p>
           </div>
-          <Button variant="primary" className="ml-auto" onClick={() => setDraft({ title: '', summary: '', squad: 'Endpoint & Mac', steps: '', keywords: [], selfService: false })}>
+          <Button variant="primary" className="ml-auto" onClick={() => setDraft({ title: '', summary: '', squad: squads[0] ?? 'IT', steps: '', keywords: [], selfService: false })}>
             <Plus className="size-4" />New article
           </Button>
         </div>
@@ -124,7 +124,7 @@ function Insights({ patterns, onDraft }: { patterns: Pattern[]; onDraft: (d: Dra
                   </span>
                   <span className="text-xs text-slate-500">{p.squad}</span>
                 </div>
-                <h3 className="mt-1.5 text-base font-semibold tracking-tight">{p.label}</h3>
+                <h2 className="mt-1.5 text-base font-semibold tracking-tight">{p.label}</h2>
                 <p className="mt-0.5 text-xs text-slate-500">Key terms: {p.terms.join(', ')}</p>
               </div>
               <dl className="grid grid-cols-3 gap-4 text-right">
@@ -138,7 +138,7 @@ function Insights({ patterns, onDraft }: { patterns: Pattern[]; onDraft: (d: Dra
               <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
                 <p className="flex items-center gap-1.5 text-xs font-semibold text-indigo-200"><Sparkles className="size-3.5" />AI draft from {p.members.filter((m) => m.resolution).length} resolutions</p>
                 <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-xs text-slate-300">{p.draft.steps.map((s) => <li key={s}>{s}</li>)}</ol>
-                {!p.selfServiceable && <p className="mt-1.5 text-[11px] text-amber-300/90">Contains steps that need an admin — defaulting to agent-only. You can still change that when publishing.</p>}
+                {!p.selfServiceable && <p className="mt-1.5 text-[11px] text-amber-300">Contains steps that need an admin — defaulting to agent-only. You can still change that when publishing.</p>}
               </div>
             )}
 
@@ -224,7 +224,7 @@ function Articles({ onEdit }: { onEdit: (a: KbArticle) => void }) {
                 <span className="flex items-center gap-1"><Bot className="size-3" />{st?.deflections ?? 0} self-served</span>
                 <span className="flex items-center gap-1"><ThumbsUp className="size-3" />{st?.helpful ?? 0}</span>
                 {st && <span className="flex items-center gap-1"><Clock className="size-3" />{st.author} · {timeAgo(st.updatedAt, now)}</span>}
-                {st?.sourcePattern && <span className="flex items-center gap-1 text-amber-300/80"><TrendingUp className="size-3" />from pattern</span>}
+                {st?.sourcePattern && <span className="flex items-center gap-1 text-amber-300"><TrendingUp className="size-3" />from pattern</span>}
                 <Button size="sm" variant="ghost" className="ml-auto" onClick={() => onEdit(a)}>Edit</Button>
               </div>
             </Card>
@@ -244,6 +244,7 @@ function ArticleEditor({ draft, onClose }: { draft: Draft | null; onClose: () =>
 }
 
 function EditorForm({ draft, onClose }: { draft: Draft; onClose: () => void }) {
+  const squads = usePlatformStore((s) => s.squads);
   const publishArticle = usePlatformStore((s) => s.publishArticle);
   const updateArticle = usePlatformStore((s) => s.updateArticle);
   const setSelfService = usePlatformStore((s) => s.setSelfService);
@@ -275,7 +276,7 @@ function EditorForm({ draft, onClose }: { draft: Draft; onClose: () => void }) {
       {!f.id && (
         <Field label="Owning squad">
           <select className={inputClass} value={f.squad} onChange={(e) => setF({ ...f, squad: e.target.value as SwarmSquad })}>
-            {SWARM_SQUADS.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}
+            {squads.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}
           </select>
         </Field>
       )}

@@ -186,7 +186,7 @@ function PaletteBody({ initialScope, onClose }: { initialScope: PaletteScope; on
           }}
           onKeyDown={onKeyDown}
           placeholder="Search tickets, assets, SaaS apps, vault, or run a macro…"
-          className="h-12 flex-1 bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-500"
+          className="h-12 flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-500"
           aria-label="Search"
         />
         <Kbd>ESC</Kbd>

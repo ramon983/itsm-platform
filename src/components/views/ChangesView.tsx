@@ -11,7 +11,7 @@ import { CURRENT_AGENT } from '@/data/seed';
 import { useNow } from '@/hooks/useNow';
 import { CAB_THRESHOLD, scoreChange } from '@/lib/changes';
 import { ticketSubject } from '@/lib/copilot';
-import { ALLOWED_TRANSITIONS, STATUS_LABEL, SWARM_SQUADS, TICKET_STATUSES } from '@/lib/rules';
+import { ALLOWED_TRANSITIONS, STATUS_LABEL, TICKET_STATUSES } from '@/lib/rules';
 import { usePlatformStore } from '@/store/usePlatformStore';
 import type { CabStatus, ChangeDetails, SwarmSquad, Ticket, TicketStatus } from '@/types/platform';
 
@@ -138,7 +138,11 @@ function ChangeDetail({ change, details: d }: { change: Ticket; details: ChangeD
   const transitionTicket = usePlatformStore((s) => s.transitionTicket);
   const [resolveHint, setResolveHint] = useState(false);
   const me = users.find((u) => u.name === CURRENT_AGENT);
-  const canApprove = (me?.role === 'Approver' || me?.role === 'Admin') && change.requesterName !== CURRENT_AGENT;
+  const solo = usePlatformStore((s) => s.orgProfile) === 'solo';
+  const own = change.requesterName === CURRENT_AGENT;
+  const canApprove = (me?.role === 'Approver' || me?.role === 'Admin') && (!own || solo);
+  const [reason, setReason] = useState('');
+  const needsReason = own && solo;
   const subject = useMemo(() => ticketSubject(change), [change]);
   const maxFactor = Math.max(...Object.values(d.riskFactors), 1);
 
@@ -182,9 +186,12 @@ function ChangeDetail({ change, details: d }: { change: Ticket; details: ChangeD
         <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.06] pt-3">
           {d.cabStatus === 'PENDING' && (
             <>
-              <Button size="sm" variant="primary" disabled={!canApprove} onClick={() => decideCab(change.id, true)}><Check className="size-3.5" />Approve</Button>
-              <Button size="sm" variant="danger" disabled={!canApprove} onClick={() => decideCab(change.id, false)}><X className="size-3.5" />Reject</Button>
-              {!canApprove && <span className="text-[11px] text-slate-500">Approvers can’t approve their own changes.</span>}
+              {needsReason && (
+                <input aria-label="Self-approval reason" className={clsx(inputClass, 'h-8 max-w-xs py-1 text-xs')} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why it’s safe (recorded in the audit log)" />
+              )}
+              <Button size="sm" variant="primary" disabled={!canApprove || (needsReason && reason.trim().length < 10)} onClick={() => decideCab(change.id, true, reason)}><Check className="size-3.5" />{needsReason ? 'Self-approve' : 'Approve'}</Button>
+              <Button size="sm" variant="danger" disabled={!canApprove} onClick={() => decideCab(change.id, false, reason)}><X className="size-3.5" />Reject</Button>
+              {!canApprove && <span className="text-[11px] text-slate-500">Approvers can’t approve their own changes (Solo mode allows it with a reason).</span>}
             </>
           )}
           <select
@@ -234,12 +241,13 @@ function NewChangeModal({ open, onClose, onCreated }: { open: boolean; onClose: 
 }
 
 function NewChangeForm({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+  const squads = usePlatformStore((s) => s.squads);
   const assets = usePlatformStore((s) => s.assets);
   const createChange = usePlatformStore((s) => s.createChange);
   const now = useNow();
   const toLocal = (ms: number) => new Date(ms - new Date(ms).getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
   const [f, setF] = useState({
-    title: '', description: '', swarmSquad: 'Endpoint & Mac' as SwarmSquad, impact: 2, affectedAssetIds: [] as string[],
+    title: '', description: '', swarmSquad: (squads[0] ?? 'IT') as SwarmSquad, impact: 2, affectedAssetIds: [] as string[],
     testedInStaging: true, outsideMaintenanceWindow: false, touchesSecurityControls: false,
     windowStart: toLocal(now + 86_400_000), windowEnd: toLocal(now + 86_400_000 + 2 * 3600_000),
     implementationPlan: '', rollbackPlan: '', jiraRelease: '',
@@ -265,7 +273,7 @@ function NewChangeForm({ onClose, onCreated }: { onClose: () => void; onCreated:
       <div className="sm:col-span-2"><Field label="Why is this change needed?"><textarea rows={2} className={inputClass} value={f.description} onChange={(e) => set('description', e.target.value)} /></Field></div>
       <Field label="Squad">
         <select className={inputClass} value={f.swarmSquad} onChange={(e) => set('swarmSquad', e.target.value as SwarmSquad)}>
-          {SWARM_SQUADS.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}
+          {squads.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}
         </select>
       </Field>
       <Field label={`Impact: ${['', 'single user', 'team', 'department', 'site', 'company-wide'][f.impact]}`}>

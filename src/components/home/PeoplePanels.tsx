@@ -139,7 +139,7 @@ export function TeamAvailability({ holidays }: { holidays: Holiday[] }) {
         <table className="w-full min-w-[640px] border-separate border-spacing-y-1 text-xs">
           <thead>
             <tr>
-              <th className="w-40" />
+              <th className="w-40 text-left font-normal"><span className="sr-only">Teammate</span></th>
               {days.map((d) => (
                 <th key={d.toISOString()} className={clsx('px-0.5 text-center font-normal', d.getDay() % 6 === 0 ? 'text-slate-600' : 'text-slate-400', ymd(d) === todayYmd && 'text-sky-300')}>
                   <span className="block text-[10px]">{d.toLocaleDateString(undefined, { weekday: 'narrow' })}</span>
@@ -166,7 +166,7 @@ export function TeamAvailability({ holidays }: { holidays: Holiday[] }) {
                   const label = off ? `${p.name}: ${off.type}${off.note ? ` — ${off.note}` : ''}` : hol ? `${p.name}: ${hol.name} (${p.country})` : `${p.name}: ${weekend ? 'weekend' : 'available'}`;
                   return (
                     <td key={key} className="px-0.5">
-                      <span title={label} aria-label={label} className={clsx('block h-6 rounded-md', off ? TIME_OFF_STYLE[off.type] : hol ? TIME_OFF_STYLE.Holiday : weekend ? 'bg-white/[0.02]' : 'bg-white/[0.06]', key === todayYmd && 'ring-1 ring-sky-400/60')} />
+                      <span role="img" title={label} aria-label={label} className={clsx('block h-6 rounded-md', off ? TIME_OFF_STYLE[off.type] : hol ? TIME_OFF_STYLE.Holiday : weekend ? 'bg-white/[0.02]' : 'bg-white/[0.06]', key === todayYmd && 'ring-1 ring-sky-400/60')} />
                     </td>
                   );
                 })}

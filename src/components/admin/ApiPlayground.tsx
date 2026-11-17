@@ -205,12 +205,12 @@ export function ApiPlayground() {
               <Button size="sm" className="ml-auto" onClick={() => { selectTicket(created); setView('tickets'); }}>Open ticket</Button>
             </div>
           )}
-          <pre className="flex-1 overflow-auto rounded-lg bg-code p-3 font-mono text-[11px] leading-relaxed text-slate-300" aria-label="Response body">
+          <pre tabIndex={0} className="flex-1 overflow-auto rounded-lg bg-code p-3 font-mono text-[11px] leading-relaxed text-slate-300" aria-label="Response body">
             {result ? pretty(result.body) : 'Fire a request to see the response.'}
           </pre>
           <details className="mt-2 text-[11px] text-slate-500">
             <summary className="cursor-pointer">curl</summary>
-            <pre className="mt-1 overflow-x-auto rounded-md bg-code p-2 font-mono">{curl}</pre>
+            <pre tabIndex={0} className="mt-1 overflow-x-auto rounded-md bg-code p-2 font-mono">{curl}</pre>
           </details>
         </Card>
       </div>

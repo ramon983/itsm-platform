@@ -10,7 +10,6 @@ import { AGENTS, CURRENT_AGENT } from '@/data/seed';
 import { useNow } from '@/hooks/useNow';
 import { computeKpis, formatDuration, usd } from '@/lib/metrics';
 import { detectPatterns } from '@/lib/patterns';
-import { SWARM_SQUADS } from '@/lib/rules';
 import { liveSlaSeconds } from '@/lib/sla';
 import { usePlatformStore } from '@/store/usePlatformStore';
 
@@ -124,14 +123,15 @@ function NeedsAttention() {
 }
 
 function SquadLoad() {
+  const squads = usePlatformStore((s) => s.squads);
   const tickets = usePlatformStore((s) => s.tickets);
   const open = tickets.filter((t) => t.status !== 'RESOLVED_KB_LINKED');
-  const max = Math.max(1, ...SWARM_SQUADS.map((sq) => open.filter((t) => t.swarmSquad === sq).length));
+  const max = Math.max(1, ...squads.map((sq) => open.filter((t) => t.swarmSquad === sq).length));
   return (
     <Card className="p-4">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold tracking-tight"><Users className="size-4 text-indigo-400" />Swarm load by squad</h2>
       <ul className="space-y-3">
-        {SWARM_SQUADS.map((sq) => {
+        {squads.map((sq) => {
           const mine = open.filter((t) => t.swarmSquad === sq);
           const waiting = mine.filter((t) => t.slaPaused).length;
           const people = Array.from(new Set(mine.flatMap((t) => t.activeSwarmAgents)));

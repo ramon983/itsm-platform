@@ -17,6 +17,7 @@ import {
   SLA_PAUSING,
   SLA_TARGET_SECONDS,
   STATUS_LABEL,
+  SWARM_SQUADS,
   assertTransition,
   nextTicketId,
   validateHandoff,
@@ -29,6 +30,8 @@ import type { SiemApiResponse } from '@/lib/api';
 import { INTAKE_AGENT_NAME, LANGUAGE_NAMES } from '@/lib/intake';
 import { findDeflectionArticle } from '@/lib/patterns';
 import type {
+  Density,
+  OrgProfile,
   SpotlightEntry,
   TimeOff,
   Wish,
@@ -66,7 +69,7 @@ export interface BoardFilter {
   priority: 'ALL' | 'P1';
   query: string;
 }
-export type ThemePreference = 'system' | 'light' | 'dark';
+export type ThemePreference = 'system' | 'light' | 'dark' | 'contrast';
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 interface UiState {
@@ -84,6 +87,9 @@ interface UiState {
 
 export interface PlatformState extends SeedState, UiState {
   flags: FeatureFlags;
+  orgProfile: OrgProfile;
+  squads: SwarmSquad[];
+  density: Density;
   profile: AgentProfile;
   baseline: typeof METRICS_BASELINE;
   reclaimedMonthlySavings: number;
@@ -138,7 +144,7 @@ export interface PlatformState extends SeedState, UiState {
     outsideMaintenanceWindow: boolean; touchesSecurityControls: boolean; windowStart: string; windowEnd: string;
     implementationPlan: string; rollbackPlan: string | null; jiraRelease?: string;
   }) => string;
-  decideCab: (ticketId: string, approve: boolean) => ActionResult;
+  decideCab: (ticketId: string, approve: boolean, reason?: string) => ActionResult;
 
   // knowledge
   publishArticle: (input: Omit<KbArticle, 'id'> & { selfService: boolean; sourcePattern?: string; status?: 'published' | 'draft' }) => KbArticle;
@@ -159,6 +165,13 @@ export interface PlatformState extends SeedState, UiState {
   removeCustomField: (id: string) => ActionResult;
   toggleIntegration: (key: IntegrationKey) => ActionResult;
   updateAiSettings: (patch: Partial<Omit<AiSettings, 'humanApprovalForMacros'>>) => ActionResult;
+
+  // organisation
+  setOrgProfile: (profile: OrgProfile) => ActionResult;
+  addSquad: (name: string) => ActionResult;
+  renameSquad: (from: string, to: string) => ActionResult;
+  removeSquad: (name: string, moveTo: string) => ActionResult;
+  setDensity: (density: Density) => void;
 
   // home
   setSelectedTools: (ids: string[]) => void;
@@ -212,6 +225,9 @@ const initialUi = (): UiState => ({
 
 const initialData = () => ({
   ...createSeedState(),
+  orgProfile: 'team' as OrgProfile,
+  squads: [...SWARM_SQUADS],
+  density: 'comfortable' as Density,
   flags: { ...INITIAL_FLAGS },
   profile: { ...INITIAL_PROFILE },
   baseline: { ...METRICS_BASELINE },
@@ -245,6 +261,10 @@ export const usePlatformStore = create<PlatformState>()(
       const slaTarget = (p: TicketPriority) => (get().slaPolicies.find((x) => x.priority === p)?.resolutionMinutes ?? SLA_TARGET_SECONDS[p] / 60) * 60;
 
       const currentUser = () => get().users.find((u) => u.name === CURRENT_AGENT);
+      /** Map a squad name (from a template, SIEM rule, or seed) onto this org's configured squads. */
+      const resolveSquad = (wanted: SwarmSquad) =>
+        get().squads.includes(wanted) ? wanted : (get().squads.find((q) => /security|siem|soc/i.test(q) && /security|siem/i.test(wanted)) ?? get().squads[0]!);
+      const leadFor = (squad: SwarmSquad) => get().users.find((u) => u.active && u.squad === squad)?.name ?? CURRENT_AGENT;
 
       // Automations add context (notes, people, notifications) — they never change status or ownership silently.
       const runAutomations = (trigger: AutomationTrigger, ticketId: string) => {
@@ -348,7 +368,7 @@ export const usePlatformStore = create<PlatformState>()(
           if (Object.keys(errors).length) return fail(Object.values(errors)[0]!);
           const now = Date.now();
           const live = liveSlaSeconds(ticket, get().slaAnchors[ticketId], now);
-          const squadAgents = AGENTS.filter((a) => a.squad === input.toSquad).map((a) => a.name);
+          const squadAgents = get().users.filter((u) => u.active && u.squad === input.toSquad).map((u) => u.name);
           const nextAgents = input.toAgent
             ? [input.toAgent, ...ticket.activeSwarmAgents.filter((a) => a !== input.toAgent)]
             : Array.from(new Set([...squadAgents.slice(0, 1), ...ticket.activeSwarmAgents]));
@@ -531,8 +551,8 @@ export const usePlatformStore = create<PlatformState>()(
             priority: 'P1',
             sentiment: 'Urgent Client Impact',
             status: 'AI_TRIAGED',
-            swarmSquad: 'Security & SIEM',
-            activeSwarmAgents: ['Riley Park'],
+            swarmSquad: resolveSquad('Security & SIEM'),
+            activeSwarmAgents: [leadFor(resolveSquad('Security & SIEM'))],
             slaRemainingSeconds: slaTarget('P1'),
             slaPaused: false,
             linkedAssetId: 'MBP-0942',
@@ -575,7 +595,8 @@ export const usePlatformStore = create<PlatformState>()(
           const st = get();
           const id = nextTicketId(a.ticketType, st.tickets);
           const now = Date.now();
-          const squadLead = AGENTS.find((ag) => ag.squad === a.swarmSquad)!.name;
+          const squad = st.squads.includes(a.swarmSquad) ? a.swarmSquad : st.squads[0]!; // template squad may not exist in this org
+          const squadLead = st.users.find((u) => u.active && u.squad === squad)?.name ?? CURRENT_AGENT;
           const messages: TicketMessage[] = conversation.map((m) =>
             m.from === 'user'
               ? {
@@ -602,7 +623,7 @@ export const usePlatformStore = create<PlatformState>()(
           const ticket: Ticket = {
             id, type: a.ticketType, templateId: a.templateId, title: a.title, requesterName: requester.name,
             requesterEmail: requester.email, detectedLanguage: a.detectedLanguage, channel: 'Portal', priority: a.priority,
-            sentiment: a.sentiment, status: 'AI_TRIAGED', swarmSquad: a.swarmSquad, activeSwarmAgents: [squadLead],
+            sentiment: a.sentiment, status: 'AI_TRIAGED', swarmSquad: squad, activeSwarmAgents: [squadLead],
             slaRemainingSeconds: slaTarget(a.priority), slaPaused: false, linkedAssetId: a.linkedAssetId,
             linkedSaasId: a.linkedSaasId, recommendedMacro: a.recommendedMacro, messages,
           };
@@ -769,17 +790,21 @@ export const usePlatformStore = create<PlatformState>()(
           return id;
         },
 
-        decideCab: (ticketId, approve) => {
+        decideCab: (ticketId, approve, reason) => {
           const details = get().changeDetails[ticketId];
           const ticket = get().tickets.find((t) => t.id === ticketId);
           if (!details || !ticket) return fail(`Change ${ticketId} not found`);
           if (details.cabStatus !== 'PENDING') return fail(`CAB decision already recorded (${details.cabStatus})`);
           const me = currentUser();
           if (!me || (me.role !== 'Approver' && me.role !== 'Admin')) return fail('Only Approvers and Admins can record CAB decisions');
-          if (ticket.requesterName === CURRENT_AGENT) return fail('You cannot approve your own change');
+          const solo = get().orgProfile === 'solo';
+          if (ticket.requesterName === CURRENT_AGENT && !solo) return fail('You cannot approve your own change');
+          if (ticket.requesterName === CURRENT_AGENT && solo && (reason?.trim().length ?? 0) < 10) {
+            return fail('Solo self-approval needs a reason (10+ characters) for the audit trail');
+          }
           set((s) => ({ changeDetails: { ...s.changeDetails, [ticketId]: { ...details, cabStatus: approve ? 'APPROVED' : 'REJECTED', cabDecisionBy: CURRENT_AGENT } } }));
           appendMessage(ticketId, { sender: CURRENT_AGENT, role: 'ai_system', originalLang: 'en', originalText: `CAB ${approve ? 'approved' : 'rejected'} by ${CURRENT_AGENT}.`, metadata: { cab: approve ? 'APPROVED' : 'REJECTED' } });
-          audit('change', approve ? 'CAB approved' : 'CAB rejected', ticketId, `Risk ${details.riskScore} ${details.riskLevel}`);
+          audit('change', approve ? (ticket.requesterName === CURRENT_AGENT ? 'Solo self-approved' : 'CAB approved') : 'CAB rejected', ticketId, `Risk ${details.riskScore} ${details.riskLevel}${reason ? ` · reason: ${reason.trim()}` : ''}`);
           get().pushToast({ tone: approve ? 'success' : 'info', title: `${ticketId} ${approve ? 'approved' : 'rejected'} by CAB` });
           return { ok: true };
         },
@@ -968,7 +993,7 @@ export const usePlatformStore = create<PlatformState>()(
           const ticket: Ticket = {
             id, type: 'INCIDENT', templateId: inc.template_id, title: inc.title, requesterName: inc.requester_name, requesterEmail: inc.requester_email,
             detectedLanguage: 'en', channel: 'SIEM Webhook', priority: inc.priority, sentiment: 'Urgent Client Impact', status: 'AI_TRIAGED',
-            swarmSquad: inc.swarm_squad, activeSwarmAgents: [AGENTS.find((a) => a.squad === inc.swarm_squad)!.name],
+            swarmSquad: resolveSquad(inc.swarm_squad), activeSwarmAgents: [leadFor(resolveSquad(inc.swarm_squad))],
             slaRemainingSeconds: slaTarget(inc.priority), slaPaused: false, linkedAssetId: inc.linked_asset_id ?? undefined,
             recommendedMacro: inc.recommended_macro ?? undefined,
             messages: [
@@ -987,6 +1012,81 @@ export const usePlatformStore = create<PlatformState>()(
           runAutomations('ticket_created', id);
           return id;
         },
+
+        // ------------------------------------------------------------ organisation (Solo ↔ Enterprise)
+        setOrgProfile: (profile) => {
+          const prev = get().orgProfile;
+          if (profile === prev) return { ok: true };
+          if (profile === 'solo') {
+            // One person does everything: fold every squad into "IT" so nothing is orphaned.
+            const into = 'IT';
+            const remap = <T extends { swarmSquad: SwarmSquad }>(x: T) => ({ ...x, swarmSquad: into });
+            set((s) => ({
+              orgProfile: 'solo',
+              squads: [into],
+              density: 'compact',
+              tickets: s.tickets.map(remap),
+              problems: s.problems.map(remap),
+              kbArticles: s.kbArticles.map((k) => ({ ...k, squad: into })),
+              users: s.users.map((u) => ({ ...u, squad: into })),
+              aiSettings: { ...s.aiSettings, autonomy: 'auto_resolve_low_risk' },
+            }));
+          } else {
+            const squads = get().squads.length > 1 ? get().squads : [...SWARM_SQUADS, ...(get().squads[0] && !SWARM_SQUADS.includes(get().squads[0]!) ? [get().squads[0]!] : [])];
+            set({ orgProfile: profile, squads, density: 'comfortable' });
+          }
+          audit('admin', 'Organization profile changed', 'org', `${prev} → ${profile}`);
+          get().pushToast({
+            tone: 'success',
+            title: { solo: 'Solo mode: one IT team, self-approval with a reason', team: 'Team mode', enterprise: 'Enterprise mode: strict separation of duties' }[profile],
+          });
+          return { ok: true };
+        },
+
+        addSquad: (name) => {
+          const n = name.trim();
+          if (n.length < 2) return fail('Give the squad a name');
+          if (get().squads.some((q) => q.toLowerCase() === n.toLowerCase())) return fail(`${n} already exists`);
+          if (get().squads.length >= 40) return fail('40 squads maximum');
+          set((s) => ({ squads: [...s.squads, n], orgProfile: s.orgProfile === 'solo' ? 'team' : s.orgProfile }));
+          audit('admin', 'Squad added', n, '');
+          get().pushToast({ tone: 'success', title: `Squad “${n}” added` });
+          return { ok: true };
+        },
+
+        renameSquad: (from, to) => {
+          const n = to.trim();
+          if (n.length < 2) return fail('Give the squad a name');
+          if (from !== n && get().squads.some((q) => q.toLowerCase() === n.toLowerCase())) return fail(`${n} already exists`);
+          const ren = (q: SwarmSquad) => (q === from ? n : q);
+          set((s) => ({
+            squads: s.squads.map(ren),
+            tickets: s.tickets.map((t) => ({ ...t, swarmSquad: ren(t.swarmSquad) })),
+            problems: s.problems.map((p) => ({ ...p, swarmSquad: ren(p.swarmSquad) })),
+            users: s.users.map((u) => ({ ...u, squad: ren(u.squad) })),
+            kbArticles: s.kbArticles.map((k) => ({ ...k, squad: ren(k.squad) })),
+          }));
+          audit('admin', 'Squad renamed', from, `→ ${n}`);
+          return { ok: true };
+        },
+
+        removeSquad: (name, moveTo) => {
+          if (get().squads.length <= 1) return fail('You need at least one squad');
+          if (name === moveTo || !get().squads.includes(moveTo)) return fail('Pick another squad to move work to');
+          const mv = (q: SwarmSquad) => (q === name ? moveTo : q);
+          set((s) => ({
+            squads: s.squads.filter((q) => q !== name),
+            tickets: s.tickets.map((t) => ({ ...t, swarmSquad: mv(t.swarmSquad) })),
+            problems: s.problems.map((p) => ({ ...p, swarmSquad: mv(p.swarmSquad) })),
+            users: s.users.map((u) => ({ ...u, squad: mv(u.squad) })),
+            kbArticles: s.kbArticles.map((k) => ({ ...k, squad: mv(k.squad) })),
+          }));
+          audit('admin', 'Squad removed', name, `work moved to ${moveTo}`);
+          get().pushToast({ tone: 'info', title: `Squad “${name}” removed`, detail: `Everything moved to ${moveTo}` });
+          return { ok: true };
+        },
+
+        setDensity: (density) => set({ density }),
 
         // ------------------------------------------------------------ home
         setSelectedTools: (ids) => {
@@ -1094,6 +1194,9 @@ export const usePlatformStore = create<PlatformState>()(
         telemetry: s.telemetry,
         kbArticles: s.kbArticles,
         flags: s.flags,
+        orgProfile: s.orgProfile,
+        squads: s.squads,
+        density: s.density,
         profile: s.profile,
         baseline: s.baseline,
         reclaimedMonthlySavings: s.reclaimedMonthlySavings,

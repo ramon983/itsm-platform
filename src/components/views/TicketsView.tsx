@@ -4,6 +4,8 @@ import clsx from 'clsx';
 import {
   ArrowRightLeft,
   BookOpen,
+  Check,
+  Copy,
   Cloud,
   Columns3,
   GitBranch,
@@ -31,7 +33,7 @@ import { AvatarStack, Button, Kbd, PriorityBadge, SlaTimer, StatusBadge, inputCl
 import { CURRENT_AGENT } from '@/data/seed';
 import { useNow } from '@/hooks/useNow';
 import { draftReply, ticketSubject } from '@/lib/copilot';
-import { ALLOWED_TRANSITIONS, STATUS_LABEL, SWARM_SQUADS, TICKET_STATUSES } from '@/lib/rules';
+import { ALLOWED_TRANSITIONS, STATUS_LABEL, TICKET_STATUSES } from '@/lib/rules';
 import { formatSla, liveSlaSeconds } from '@/lib/sla';
 import { usePlatformStore } from '@/store/usePlatformStore';
 import { CANNED_REPLIES } from '@/data/cannedReplies';
@@ -81,6 +83,7 @@ export function TicketsView() {
 }
 
 function Inbox3Col() {
+  const squads = usePlatformStore((s) => s.squads);
   const tickets = usePlatformStore((s) => s.tickets);
   const anchors = usePlatformStore((s) => s.slaAnchors);
   const selectedId = usePlatformStore((s) => s.selectedTicketId);
@@ -106,6 +109,24 @@ function Inbox3Col() {
   }, [tickets, anchors, filter, squad, query, now]);
 
   const selected = tickets.find((t) => t.id === selectedId && QUEUE_TYPES.includes(t.type)) ?? queue[0];
+
+  // j / k move through the queue (vim-style), like the tools IT people already use.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (e.metaKey || e.ctrlKey || e.altKey || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || document.querySelector('[aria-modal="true"]')) return;
+      if (e.key !== 'j' && e.key !== 'k') return;
+      const idx = queue.findIndex((t) => t.id === selected?.id);
+      const next = queue[Math.min(queue.length - 1, Math.max(0, idx + (e.key === 'j' ? 1 : -1)))];
+      if (next) {
+        e.preventDefault();
+        selectTicket(next.id);
+        document.getElementById(`queue-${next.id}`)?.scrollIntoView({ block: 'nearest' });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [queue, selected, selectTicket]);
   // Jira-style queue counts: see how much is in each view before switching.
   const scoped = tickets.filter((t) => QUEUE_TYPES.includes(t.type) && t.status !== 'RESOLVED_KB_LINKED' && (squad === 'all' || t.swarmSquad === squad));
   const counts: Record<QueueFilter, number> = {
@@ -136,7 +157,7 @@ function Inbox3Col() {
           </div>
           <select aria-label="Filter by swarm squad" value={squad} onChange={(e) => setSquad(e.target.value as SwarmSquad | 'all')} className={clsx(inputClass, 'h-8 py-1 text-xs')}>
             <option value="all" className="bg-slate-900">All swarm squads</option>
-            {SWARM_SQUADS.map((s) => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
+            {squads.map((s) => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
           </select>
         </div>
         <ul className="flex-1 overflow-y-auto p-2">
@@ -145,6 +166,7 @@ function Inbox3Col() {
             return (
               <li key={t.id}>
                 <button
+                  id={`queue-${t.id}`}
                   type="button"
                   onClick={() => {
                     if (selected && selected.id !== t.id) selectTicket(selected.id); // keep the ticket you were on as a tab
@@ -183,6 +205,7 @@ function Inbox3Col() {
 }
 
 function Workspace({ ticket }: { ticket: Ticket }) {
+  const squads = usePlatformStore((s) => s.squads);
   const flags = usePlatformStore((s) => s.flags);
   const transitionTicket = usePlatformStore((s) => s.transitionTicket);
   const executeMacro = usePlatformStore((s) => s.executeMacro);
@@ -266,6 +289,9 @@ function Workspace({ ticket }: { ticket: Ticket }) {
       } else if (key === 'p' && canPause && !resolved) {
         e.preventDefault();
         togglePause();
+      } else if (key === 'r') {
+        e.preventDefault();
+        document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Composer"]')?.focus();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -279,6 +305,7 @@ function Workspace({ ticket }: { ticket: Ticket }) {
         <header className="space-y-3 border-b border-white/[0.08] p-4">
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
             <span className="font-mono font-semibold text-slate-200">{ticket.id}</span>
+            <CopyButton text={ticket.id} label={`Copy ${ticket.id}`} />
             <span className="font-mono">{ticket.templateId}</span>
             <span className="flex items-center gap-1"><ChannelIcon className="size-3.5" />{ticket.channel}</span>
             {ticket.linkedJiraIssue && <span className="flex items-center gap-1 font-mono text-sky-300"><GitBranch className="size-3" />{ticket.linkedJiraIssue}</span>}
@@ -302,8 +329,8 @@ function Workspace({ ticket }: { ticket: Ticket }) {
                 <option key={s} value={s} disabled={s !== ticket.status && !ALLOWED_TRANSITIONS[ticket.status].includes(s)} className="bg-slate-900">{STATUS_LABEL[s]}</option>
               ))}
             </select>
-            <select aria-label="Swarm squad" value={ticket.swarmSquad} disabled={resolved} onChange={(e) => setHandoff({ open: true, squad: e.target.value as SwarmSquad })} className={clsx(inputClass, 'h-9 py-1')}>
-              {SWARM_SQUADS.map((s) => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
+            <select aria-label="Swarm squad" value={ticket.swarmSquad} disabled={resolved || squads.length < 2} title={squads.length < 2 ? 'Solo mode — one team, nothing to hand off to' : undefined} onChange={(e) => setHandoff({ open: true, squad: e.target.value as SwarmSquad })} className={clsx(inputClass, 'h-9 py-1')}>
+              {squads.map((s) => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
             </select>
             <div className="flex items-center gap-2 rounded-lg border border-white/[0.08] px-2.5">
               <span className="text-[10px] uppercase tracking-wider text-slate-500">{ticket.slaPaused ? 'Paused' : 'SLA'}</span>
@@ -365,7 +392,7 @@ function Workspace({ ticket }: { ticket: Ticket }) {
               <Button size="sm" className="ml-auto" onClick={() => changeStatus('ACTIVE_SWARM')}>Reopen</Button>
             ) : (
               <span className="ml-auto flex gap-1.5">
-                <Button size="sm" onClick={() => setHandoff({ open: true })}><ArrowRightLeft className="size-3.5" />Hand off</Button>
+                {squads.length > 1 && <Button size="sm" onClick={() => setHandoff({ open: true })}><ArrowRightLeft className="size-3.5" />Hand off</Button>}
                 <Button size="sm" variant="primary" onClick={() => setResolveOpen(true)}><BookOpen className="size-3.5" />Resolve</Button>
               </span>
             )}
@@ -424,7 +451,7 @@ function Workspace({ ticket }: { ticket: Ticket }) {
                 {nativeFresh ? (
                   <p className="leading-relaxed text-slate-200" lang={nativeFresh.lang}>{nativeFresh.text}</p>
                 ) : (
-                  <p className="text-amber-300/90">
+                  <p className="text-amber-300">
                     {text.trim()
                       ? 'Live translation of free text needs the AI backend (Phase 5). This reply will be sent in English — or use an AI draft, which comes pre-translated.'
                       : flags.ai_agents ? 'Use “AI draft” to get a reply in both languages.' : 'Sent in English.'}
@@ -539,7 +566,7 @@ function ContextStrip({ ticket, asset, saasName, grants, onAsset, onSaas, onJit,
           value={jira}
           onChange={(e) => setJira(e.target.value)}
           placeholder={ticket.linkedJiraIssue ?? 'Link Jira issue (PROJ-123)'}
-          className="h-7 w-44 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 font-mono text-[11px] text-slate-100 outline-none placeholder:text-slate-500 focus:border-indigo-500/60"
+          className="h-7 w-44 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 font-mono text-[11px] text-slate-100 placeholder:text-slate-500 focus:border-indigo-500/60"
         />
       </form>
     </div>
@@ -566,7 +593,7 @@ function TicketTabs({ activeId }: { activeId: string }) {
             <span className="whitespace-nowrap font-mono">{t.id}</span>
             <span className="truncate">{t.title}</span>
           </button>
-          <button type="button" onClick={() => closeTicketTab(t.id)} aria-label={`Close ${t.id}`} className="rounded p-0.5 text-slate-500 opacity-60 hover:bg-white/[0.08] hover:opacity-100">×</button>
+          <button type="button" onClick={() => closeTicketTab(t.id)} aria-label={`Close ${t.id}`} className="grid size-6 place-items-center rounded text-slate-400 hover:bg-white/[0.08] hover:text-slate-100">×</button>
         </div>
       ))}
     </div>
@@ -600,4 +627,23 @@ function buildSlashItems(q: string, kbArticles: KbArticle[], ticket: Ticket, aiO
       .map((k) => ({ id: k.id, kind: 'kb' as const, label: k.title, insert: `Here are the verified steps from ${k.id}:\n${k.steps.map((st, i) => `${i + 1}. ${st}`).join('\n')}` })),
   ];
   return items.slice(0, 9);
+}
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={async () => {
+        await navigator.clipboard?.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1200);
+      }}
+      className="grid size-6 place-items-center rounded text-slate-400 hover:bg-white/[0.08] hover:text-slate-100"
+    >
+      {copied ? <Check className="size-3.5 text-emerald-400" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
+    </button>
+  );
 }

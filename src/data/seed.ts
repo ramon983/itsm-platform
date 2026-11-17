@@ -19,14 +19,14 @@ import type {
 export const CURRENT_AGENT = 'Alex Rivera';
 
 export const AGENTS: Agent[] = [
-  { name: 'Alex Rivera', initials: 'AR', squad: 'Network & Identity', color: 'bg-indigo-500' },
-  { name: 'Sam Okafor', initials: 'SO', squad: 'Network & Identity', color: 'bg-sky-500' },
-  { name: 'Mei Chen', initials: 'MC', squad: 'Endpoint & Mac', color: 'bg-emerald-500' },
-  { name: 'Diego Torres', initials: 'DT', squad: 'Endpoint & Mac', color: 'bg-amber-500' },
-  { name: 'Fatima Khan', initials: 'FK', squad: 'SaaS & Cloud Ops', color: 'bg-fuchsia-500' },
-  { name: 'Jonas Weber', initials: 'JW', squad: 'SaaS & Cloud Ops', color: 'bg-teal-500' },
-  { name: 'Riley Park', initials: 'RP', squad: 'Security & SIEM', color: 'bg-rose-500' },
-  { name: 'Noor Haddad', initials: 'NH', squad: 'Security & SIEM', color: 'bg-violet-500' },
+  { name: 'Alex Rivera', initials: 'AR', squad: 'Network & Identity', color: 'bg-indigo-700' },
+  { name: 'Sam Okafor', initials: 'SO', squad: 'Network & Identity', color: 'bg-sky-700' },
+  { name: 'Mei Chen', initials: 'MC', squad: 'Endpoint & Mac', color: 'bg-emerald-700' },
+  { name: 'Diego Torres', initials: 'DT', squad: 'Endpoint & Mac', color: 'bg-amber-700' },
+  { name: 'Fatima Khan', initials: 'FK', squad: 'SaaS & Cloud Ops', color: 'bg-fuchsia-700' },
+  { name: 'Jonas Weber', initials: 'JW', squad: 'SaaS & Cloud Ops', color: 'bg-teal-700' },
+  { name: 'Riley Park', initials: 'RP', squad: 'Security & SIEM', color: 'bg-rose-700' },
+  { name: 'Noor Haddad', initials: 'NH', squad: 'Security & SIEM', color: 'bg-violet-700' },
 ];
 
 export const KB_ARTICLES: KbArticle[] = [
