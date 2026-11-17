@@ -2,25 +2,42 @@
 
 import { useEffect } from 'react';
 
-import { AppShell } from '@/components/shell/AppShell';
+import { AppShell, VIEW_MODULE } from '@/components/shell/AppShell';
+import { AdminView } from '@/components/views/AdminView';
+import { ChangesView } from '@/components/views/ChangesView';
 import { DashboardView } from '@/components/views/DashboardView';
 import { EndUserPortalView } from '@/components/views/EndUserPortalView';
+import { KnowledgeView } from '@/components/views/KnowledgeView';
+import { AssetsView, SaasView, VaultView } from '@/components/views/ModuleViews';
+import { ProblemsView } from '@/components/views/ProblemsView';
+import { TicketsView } from '@/components/views/TicketsView';
 import { useHydrated } from '@/hooks/useNow';
 import { usePlatformStore, type ViewKey } from '@/store/usePlatformStore';
 
-const VIEWS: readonly ViewKey[] = ['dashboard', 'portal'];
+const VIEWS: Record<ViewKey, () => React.ReactNode> = {
+  dashboard: () => <DashboardView />,
+  tickets: () => <TicketsView />,
+  problems: () => <ProblemsView />,
+  changes: () => <ChangesView />,
+  knowledge: () => <KnowledgeView />,
+  portal: () => <EndUserPortalView />,
+  saas: () => <SaasView />,
+  assets: () => <AssetsView />,
+  vault: () => <VaultView />,
+  admin: () => <AdminView />,
+};
 
 export default function Home() {
   const hydrated = useHydrated();
   const view = usePlatformStore((s) => s.activeView);
-  const aiOn = usePlatformStore((s) => s.flags.ai_agents);
+  const flags = usePlatformStore((s) => s.flags);
   const setView = usePlatformStore((s) => s.setView);
 
-  // Deep links: #dashboard, #portal. The hash follows the active view so views are bookmarkable.
+  // Deep links (#tickets, #knowledge, #admin …). The hash follows the active view so pages are bookmarkable.
   useEffect(() => {
     const fromHash = () => {
       const key = window.location.hash.slice(1) as ViewKey;
-      if (VIEWS.includes(key)) setView(key);
+      if (key in VIEWS) setView(key);
     };
     fromHash();
     window.addEventListener('hashchange', fromHash);
@@ -30,7 +47,6 @@ export default function Home() {
     if (hydrated && window.location.hash.slice(1) !== view) window.history.replaceState(null, '', `#${view}`);
   }, [view, hydrated]);
 
-  // The store persists to localStorage, so the app renders client-side only to avoid hydration mismatches.
   if (!hydrated) {
     return (
       <div className="grid h-dvh place-items-center bg-[#090D16]">
@@ -42,6 +58,8 @@ export default function Home() {
     );
   }
 
-  // A view whose module is switched off falls back to the dashboard instead of rendering a dead page.
-  return <AppShell>{view === 'portal' && aiOn ? <EndUserPortalView /> : <DashboardView />}</AppShell>;
+  // A page whose module is switched off falls back to Home instead of rendering a dead page.
+  const owner = VIEW_MODULE[view];
+  const visible = owner === null || flags[owner] ? view : 'dashboard';
+  return <AppShell>{VIEWS[visible]()}</AppShell>;
 }

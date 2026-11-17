@@ -52,6 +52,17 @@ Never generate generic Bootstrap-style admin tables.
 `src/types/platform.ts` implements the spec's `TicketStatus`, `TicketPriority`, `SwarmSquad`, `TicketMessage` and
 `Ticket` interfaces exactly; supporting entities (assets, SaaS apps, vault items, flags, telemetry) extend around them.
 
+## Information architecture (platform restructure)
+- Every page belongs to a module (`VIEW_MODULE` in `AppShell.tsx`); when a module is off, its nav section, Home widgets
+  and side panels disappear and its pages fall back to Home.
+- Home · ITSM (Tickets, Problems, Changes, Knowledge) · AI agents (Employee portal) · SaaS · Assets · Security (Vault) · Admin.
+- The AI copilot (`CopilotPanel`, `src/lib/copilot.ts`) lives inside Tickets, Problems and Changes: similar closed tickets,
+  KB matches with confidence + reasons, next best action, bilingual drafts. It suggests; humans approve.
+- Knowledge pattern detection (`src/lib/patterns.ts`) clusters recurring tickets, drafts articles from real resolutions,
+  and published self-service articles deflect employees in the portal before a ticket exists.
+- Admin: modules, people & squads, SLA policies, no-code automations, fields & statuses (capped), AI & grounding,
+  integrations, immutable audit log (every store mutation writes one).
+
 ## Build phases
 1. Scaffold, pre-seeded reactive store, app shell, swarming dashboard. ✅
 2. Multilingual end-user chat portal and live template mapper (`EndUserPortalView.tsx`). ✅ Offline deterministic mapper in `src/lib/intake.ts`; Phase 5 swaps in Claude.

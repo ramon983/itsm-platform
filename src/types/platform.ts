@@ -132,6 +132,7 @@ export interface KbArticle {
   summary: string;
   squad: SwarmSquad;
   steps: string[];
+  keywords?: string[];
 }
 
 export interface Agent {
@@ -226,4 +227,140 @@ export interface IntakeChatMessage {
   lang: string;
   translation?: string; // English, when known
   timestamp: string;
+}
+
+// ---------------------------------------------------------------- platform expansion (ITSM modules, AI, admin)
+
+/** A previously closed ticket — the corpus the copilot and the pattern detector learn from. */
+export interface ClosedTicket {
+  id: string;
+  title: string;
+  summary: string;
+  templateId: string;
+  type: Ticket['type'];
+  swarmSquad: SwarmSquad;
+  requesterName: string;
+  resolution: string;
+  resolvedBy: string; // agent name, or 'AdminZero AI (self-service)'
+  kbId?: string;
+  assetModel?: string;
+  closedAt: string;
+  minutesToResolve: number;
+  firstContact: boolean;
+}
+
+export type ProblemStatus = 'INVESTIGATING' | 'WAITING_ON_VENDOR' | 'KNOWN_ERROR' | 'RESOLVED';
+
+export interface Problem {
+  id: string; // 'PRB-104'
+  title: string;
+  description: string;
+  status: ProblemStatus;
+  priority: TicketPriority;
+  swarmSquad: SwarmSquad;
+  activeSwarmAgents: string[];
+  linkedTicketIds: string[];
+  linkedClosedTicketIds: string[];
+  rootCause: string | null;
+  workaround: string | null;
+  linkedKbId?: string;
+  linkedJiraIssue?: string;
+  createdAt: string;
+  notes: { id: string; author: string; text: string; timestamp: string }[];
+}
+
+export type CabStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface ChangeDetails {
+  ticketId: string;
+  riskScore: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
+  riskFactors: Record<string, number>;
+  cabStatus: CabStatus;
+  cabDecisionBy?: string;
+  windowStart: string;
+  windowEnd: string;
+  implementationPlan: string;
+  rollbackPlan: string | null;
+  affectedAssetIds: string[];
+  jiraRelease?: string;
+}
+
+export interface KbStats {
+  views: number;
+  deflections: number; // employees who self-served with this article and never opened a ticket
+  helpful: number;
+  selfServiceEnabled: boolean;
+  status: 'published' | 'draft';
+  version: number;
+  updatedAt: string;
+  author: string;
+  sourcePattern?: string;
+}
+
+export type Role = 'Agent' | 'Approver' | 'Admin';
+
+export interface PlatformUser {
+  name: string;
+  email: string;
+  role: Role;
+  squad: SwarmSquad;
+  active: boolean;
+}
+
+export interface SlaPolicy {
+  priority: TicketPriority;
+  responseMinutes: number;
+  resolutionMinutes: number;
+}
+
+export type AutomationTrigger = 'ticket_created' | 'status_changed' | 'siem_alert';
+export type AutomationConditionField = 'priority' | 'swarmSquad' | 'channel' | 'detectedLanguage' | 'type';
+export type AutomationActionType = 'notify_slack' | 'notify_teams' | 'add_swarm_agent' | 'post_internal_note' | 'page_oncall';
+
+export interface AutomationRule {
+  id: string;
+  name: string;
+  enabled: boolean;
+  trigger: AutomationTrigger;
+  conditions: { field: AutomationConditionField; op: 'is' | 'is_not'; value: string }[];
+  actions: { type: AutomationActionType; value: string }[];
+  runs: number;
+  lastRunAt?: string;
+}
+
+export interface CustomField {
+  id: string;
+  label: string;
+  type: 'text' | 'select' | 'date' | 'number';
+  appliesTo: Ticket['type'][];
+  required: boolean;
+  usage30d: number; // % of tickets where it was filled
+}
+
+export type IntegrationKey = 'slack' | 'teams' | 'jira' | 'sentinel' | 'splunk' | 'datadog' | 'okta' | 'jamf' | 'secret_manager';
+
+export interface Integration {
+  key: IntegrationKey;
+  name: string;
+  category: 'Chat' | 'Dev' | 'Security' | 'Identity' | 'Endpoint' | 'Platform';
+  connected: boolean;
+  detail: string;
+}
+
+export interface AiSettings {
+  autonomy: 'suggest_only' | 'self_service_deflection' | 'auto_resolve_low_risk';
+  confidenceThreshold: number; // 0..1 — below this the AI never acts or answers on its own
+  sources: { knowledgeBase: boolean; closedTickets: boolean; cmdb: boolean; internetFallback: boolean };
+  humanApprovalForMacros: true; // locked: macros always need a human
+}
+
+export interface AuditEntry {
+  id: string;
+  timestamp: string;
+  actor: string;
+  action: string;
+  entity: string;
+  detail: string;
+  category: 'ticket' | 'problem' | 'change' | 'knowledge' | 'vault' | 'saas' | 'asset' | 'admin' | 'ai' | 'automation';
 }

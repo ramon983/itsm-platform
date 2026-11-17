@@ -4,7 +4,23 @@ AdminZero is a human-centric ITSM platform with Torii-style SaaS governance, har
 
 **Live agent dashboard:** https://ramon983.github.io/itsm-platform/ (deployed from `develop`)
 
-## What's in this build (Phase 1: agent side)
+## The platform
+AdminZero is built as a platform: every module can be turned on and off in **Admin → Modules**. When a module is off, its navigation, Home widgets and side panels disappear.
+
+| Section | What it does |
+|---|---|
+| **Home** | What needs a human now: P1s, SLA risk and urgent client impact. Also KPIs, swarm load by squad, the AI + human split, AI insights, the Arcade leaderboard and SIEM telemetry. |
+| **Tickets** | A unified omnichannel inbox: a queue filtered by All / P1 / Waiting / My swarms / squad, one timeline across channels, and a reply or internal-note composer. You can switch to a swarm board. |
+| **Problems** | Root causes behind repeat incidents, linked to open and closed tickets. A root cause is required before Known error, and the workaround can be published to Knowledge. |
+| **Changes** | Transparent CAB risk scoring: low-risk changes skip CAB. Includes a 7-day schedule, Jira release links and approve/reject. You can't approve your own change. |
+| **Knowledge** | Articles with views, self-service count and versions. **AI pattern insights** finds recurring tickets with no article, drafts one from your agents' actual fixes, and once you publish it, the portal answers those employees without a human. |
+| **Employee portal** | Multilingual chat intake. It offers a self-service article first, then maps the conversation to a ticket. |
+| **SaaS · CMDB · Vault** | Idle-seat reclaim, unlimited assets, and 1-hour JIT credentials tied to tickets. |
+| **Admin** | Modules, people & squads, SLA policies, a no-code automation builder (When → If → Then), fields & statuses (capped, to avoid the "Jira trap"), AI autonomy and grounding sources, integrations, and an immutable audit log with CSV export. |
+
+**AI Copilot.** Inside Tickets, Problems and Changes, the copilot shows similar closed tickets and what fixed them, KB matches with a confidence score and the reasons for it, the next best action, and bilingual reply drafts. Every suggestion cites its source. If nothing internal matches, it says so; a labelled internet fallback covers basic IT questions only. Macros always need a human to run them.
+
+## Earlier phases
 - **App shell.** A collapsible sidebar that shows only the modules you've enabled, with live counts. It also has a Level / XP bar and a Reset Demo State button. The top bar holds the ⌘K / Ctrl+K command palette, toggle pills for each module, and a Secret Manager status indicator.
 - **Unified swarming dashboard.** Five KPI cards (Open Incidents, First Contact Resolution, MTTR, SLA Compliance, Monthly SaaS Spend with reclaimable savings) that recalculate from live state.
 - **Anti-silo swarm board.** One column per swarm squad, never per assignee. You can filter by any of the 5 statuses or show P1s only. Dragging a card to another squad opens the handoff modal.

@@ -31,13 +31,14 @@ import {
   confirmationMessage,
   detectLanguage,
 } from '@/lib/intake';
+import { findDeflectionArticle } from '@/lib/patterns';
 import { usePlatformStore } from '@/store/usePlatformStore';
 import type { EndUserProfile, IntakeAnalysis, IntakeChatMessage } from '@/types/platform';
 
 const STEPS = ['Detecting Language & Sentiment', 'Querying CMDB & Torii SaaS Graph', 'Mapping to Predefined ITSM Schema'] as const;
 const SECTION_COUNT = 6;
 
-type Phase = 'idle' | 'analyzing' | 'ready' | 'submitted';
+type Phase = 'idle' | 'analyzing' | 'ready' | 'submitted' | 'deflected';
 
 const uid = () => crypto.randomUUID().slice(0, 8);
 
@@ -47,6 +48,11 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
   const createTicketFromIntake = usePlatformStore((s) => s.createTicketFromIntake);
   const openInspector = usePlatformStore((s) => s.openInspector);
   const setView = usePlatformStore((s) => s.setView);
+  const kbArticles = usePlatformStore((s) => s.kbArticles);
+  const kbStats = usePlatformStore((s) => s.kbStats);
+  const aiSettings = usePlatformStore((s) => s.aiSettings);
+  const recordDeflection = usePlatformStore((s) => s.recordDeflection);
+  const [deflection, setDeflection] = useState<{ kbId: string; title: string; steps: string[]; confidence: number } | null>(null);
 
   const [personaEmail, setPersonaEmail] = useState(END_USERS[0]!.email);
   const [chat, setChat] = useState<IntakeChatMessage[]>([]);
@@ -79,6 +85,7 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
     setAnalysis(null);
     setRevealed(0);
     setSubmittedId(null);
+    setDeflection(null);
   };
 
   const send = (text: string, who: EndUserProfile = persona, history: IntakeChatMessage[] = chat) => {
@@ -94,7 +101,13 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
       userMessages: conversation.filter((m) => m.from === 'user').map((m) => m.text),
     });
 
+    // Self-service first: if a published self-service article answers this, offer it before any human gets involved.
+    const match = aiSettings.autonomy !== 'suggest_only'
+      ? findDeflectionArticle(conversation.filter((m) => m.from === 'user').map((m) => m.translation ?? m.text).join(' '), kbArticles, kbStats, aiSettings.confidenceThreshold)
+      : null;
+
     setChat(conversation);
+    setDeflection(null);
     setInput('');
     setPhase('analyzing');
     setAnalysis(null);
@@ -114,6 +127,7 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
           translation: result.replyLanguage !== 'en' ? result.replyEnglish : undefined, timestamp: new Date().toISOString(),
         },
       ]);
+      if (match) setDeflection({ kbId: match.article.id, title: match.article.title, steps: match.article.steps, confidence: match.confidence });
       for (let i = 1; i <= SECTION_COUNT; i += 1) later(i * Math.max(1, stepMs / 3), () => setRevealed(i));
     });
   };
@@ -176,6 +190,35 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
         <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto scroll-smooth px-5 py-6">
           <AgentBubble text={`Hi ${persona.name.split(' ')[0]} 👋 I'm the AdminZero IT assistant. Tell me what's going on, in whatever language you like.`} lang="en" />
           {chat.map((m) => (m.from === 'user' ? <UserBubble key={m.id} message={m} /> : <AgentBubble key={m.id} text={m.text} lang={m.lang} />))}
+          {deflection && phase === 'ready' && (
+            <div className="az-pop-in ml-10 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-sm" aria-label="Suggested self-service fix">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-300"><Sparkles className="size-3.5" />This usually fixes it ({deflection.kbId} · {Math.round(deflection.confidence * 100)}% match)</p>
+              <p className="mt-1 font-medium text-slate-100">{deflection.title}</p>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-slate-200">{deflection.steps.map((st) => <li key={st}>{st}</li>)}</ol>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={() => {
+                    recordDeflection(deflection.kbId, persona.name);
+                    setPhase('deflected');
+                    setChat((c) => [...c, { id: uid(), from: 'agent', text: `Great — glad that worked, ${persona.name.split(' ')[0]}! No ticket needed. If it comes back, just message me here.`, lang: 'en', timestamp: new Date().toISOString() }]);
+                    setDeflection(null);
+                  }}
+                >
+                  <Check className="size-3.5" />That fixed it
+                </Button>
+                <Button size="sm" onClick={() => setDeflection(null)}>I still need help</Button>
+              </div>
+            </div>
+          )}
+          {phase === 'deflected' && (
+            <div className="az-pop-in ml-10 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-3 text-sm">
+              <Check className="size-4 text-emerald-400" />
+              <span className="text-emerald-200">Solved by self-service — no human needed.</span>
+              <Button size="sm" variant="ghost" className="ml-auto" onClick={resetConversation}><RotateCcw className="size-3.5" />New conversation</Button>
+            </div>
+          )}
           {phase === 'analyzing' && (
             <div className="flex items-center gap-2 pl-10 text-xs text-slate-500" aria-live="polite">
               <span className="flex gap-1">
@@ -502,7 +545,7 @@ function InspectorSections({ analysis: a, persona, revealed, phase, submittedId,
               <AlertTriangle className="size-3.5" />Waiting on the user for: {missing.map((f) => f.label.toLowerCase()).join(', ')}. You can still submit now.
             </p>
           )}
-          <Button variant="primary" className="w-full" onClick={onSubmit} disabled={phase !== 'ready'}>
+          <Button variant="primary" className="w-full" onClick={onSubmit} disabled={phase !== 'ready'} title={phase === 'deflected' ? 'Resolved by self-service — no ticket needed' : undefined}>
             {submittedId ? <><Check className="size-4" />Routed as {submittedId}</> : <>Submit & Route to Swarm Queue <ArrowRight className="size-4" /></>}
           </Button>
         </div>

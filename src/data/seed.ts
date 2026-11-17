@@ -1,3 +1,4 @@
+import { createPlatformSeed } from '@/data/seed-platform';
 import { SLA_TARGET_SECONDS } from '@/lib/rules';
 import type {
   Agent,
@@ -169,7 +170,9 @@ export const METRICS_BASELINE: MetricsBaseline = {
   slaTotal: 142,
 };
 
-export interface SeedState {
+export type PlatformSeed = ReturnType<typeof createPlatformSeed>;
+
+export interface SeedState extends Omit<PlatformSeed, 'extraTickets'> {
   tickets: Ticket[];
   slaAnchors: Record<string, number>;
   assets: HardwareAsset[];
@@ -574,6 +577,8 @@ export function createSeedState(now: number = Date.now()): SeedState {
       detail: 'Floor 3 roaming failures dropped 82% after 802.11r enablement', assetId: 'MERAKI-SW-01', timestamp: ago(90) },
   ];
 
-  const slaAnchors = Object.fromEntries(tickets.map((t) => [t.id, now]));
-  return { tickets, slaAnchors, assets, saasApps, vault, telemetry, kbArticles: KB_ARTICLES };
+  const { extraTickets, ...platform } = createPlatformSeed(now);
+  const allTickets = [...tickets, ...extraTickets];
+  const slaAnchors = Object.fromEntries(allTickets.map((t) => [t.id, now]));
+  return { tickets: allTickets, slaAnchors, assets, saasApps, vault, telemetry, kbArticles: KB_ARTICLES.map((k) => ({ ...k })), ...platform };
 }

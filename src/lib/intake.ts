@@ -48,6 +48,11 @@ export const INTAKE_PRESETS: IntakePreset[] = [
     text: 'Wir benötigen heute Abend um 22:00 Uhr ein Notfall-Wartungsfenster für das Okta SAML-Zertifikat.',
     translation: 'We need an emergency maintenance window tonight at 22:00 for the Okta SAML certificate.',
   },
+  {
+    id: 'en-outlook', flag: 'EN', label: 'English · Outlook calendar not syncing', personaEmail: 'priya.shah@adminzero.io',
+    text: 'My Outlook calendar is not syncing with Exchange again — meetings are missing.',
+    translation: 'My Outlook calendar is not syncing with Exchange again — meetings are missing.',
+  },
 ];
 
 export const KNOWN_TRANSLATIONS: Record<string, string> = Object.fromEntries(INTAKE_PRESETS.map((p) => [p.text, p.translation]));

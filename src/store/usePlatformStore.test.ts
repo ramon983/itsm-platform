@@ -16,7 +16,7 @@ beforeEach(() => {
 describe('seed data', () => {
   it('pre-seeds the interconnected demo graph', () => {
     const s = store();
-    expect(s.tickets).toHaveLength(8);
+    expect(s.tickets).toHaveLength(10); // 8 multilingual + 2 seeded changes
     expect(new Set(s.tickets.map((t) => t.detectedLanguage))).toEqual(new Set(['es', 'fr', 'ja', 'de', 'en', 'pt']));
     expect(s.assets).toHaveLength(6);
     expect(s.saasApps.map((a) => a.name)).toEqual([

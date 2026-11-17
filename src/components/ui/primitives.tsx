@@ -20,7 +20,7 @@ export const STATUS_STYLE: Record<TicketStatus, string> = {
 
 export function StatusBadge({ status, className }: { status: TicketStatus; className?: string }) {
   return (
-    <span className={clsx('inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-medium', STATUS_STYLE[status], className)}>
+    <span className={clsx('inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[11px] font-medium', STATUS_STYLE[status], className)}>
       {status.startsWith('WAITING') && <span aria-hidden>⏸</span>}
       {STATUS_LABEL[status]}
     </span>
@@ -36,7 +36,7 @@ const PRIORITY_STYLE: Record<TicketPriority, string> = {
 
 export function PriorityBadge({ priority }: { priority: TicketPriority }) {
   return (
-    <span className={clsx('rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold', PRIORITY_STYLE[priority])}>
+    <span className={clsx('whitespace-nowrap rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold', PRIORITY_STYLE[priority])}>
       {priority === 'P1' ? 'P1 CRITICAL' : priority}
     </span>
   );
