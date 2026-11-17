@@ -2,6 +2,7 @@ import { SLA_TARGET_SECONDS } from '@/lib/rules';
 import type {
   Agent,
   AgentProfile,
+  EndUserProfile,
   FeatureFlags,
   HardwareAsset,
   KbArticle,
@@ -128,6 +129,20 @@ function saas(
     annualSpend: Math.round(rest.provisionedSeats * rest.costPerSeatMonthly * 12),
   };
 }
+
+// Employees who can sign in to the end-user portal. Each maps to CMDB assets and SaaS seats.
+export const END_USERS: EndUserProfile[] = [
+  { name: 'María González', email: 'maria.gonzalez@adminzero.io', department: 'Sales · Enterprise', location: 'Madrid',
+    preferredLanguage: 'es', assetIds: ['MBP-0942'], saasIds: ['saas-salesforce', 'saas-slack', 'saas-okta'] },
+  { name: 'Camille Laurent', email: 'camille.laurent@adminzero.io', department: 'Product Design', location: 'Paris',
+    preferredLanguage: 'fr', assetIds: ['MBP-1004'], saasIds: ['saas-figma', 'saas-slack', 'saas-okta'] },
+  { name: 'Haruto Tanaka', email: 'haruto.tanaka@adminzero.io', department: 'Brand Design', location: 'Tokyo',
+    preferredLanguage: 'ja', assetIds: [], saasIds: ['saas-slack', 'saas-okta'] },
+  { name: 'Lukas Becker', email: 'lukas.becker@adminzero.io', department: 'Identity & Access', location: 'Berlin',
+    preferredLanguage: 'de', assetIds: ['IPH-0311'], saasIds: ['saas-okta', 'saas-datadog', 'saas-slack'] },
+  { name: 'Priya Shah', email: 'priya.shah@adminzero.io', department: 'Finance', location: 'London',
+    preferredLanguage: 'en', assetIds: ['MBP-1188'], saasIds: ['saas-salesforce', 'saas-slack', 'saas-okta'] },
+];
 
 export const INITIAL_FLAGS: FeatureFlags = {
   itsm_core: true,

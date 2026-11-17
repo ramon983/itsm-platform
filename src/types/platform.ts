@@ -171,3 +171,59 @@ export type InspectorTarget =
   | { kind: 'asset'; id: string }
   | { kind: 'saas'; id: string }
   | null;
+
+// ---------------------------------------------------------------- end-user intake (Phase 2)
+
+export interface EndUserProfile {
+  name: string;
+  email: string;
+  department: string;
+  location: string;
+  preferredLanguage: string;
+  assetIds: string[];
+  saasIds: string[];
+}
+
+export type IntakeTemplateId = '#INC-NET-04' | '#SR-HW-01' | '#SR-SAAS-09' | '#CHG-SEC-02' | '#INC-SEC-01' | '#INC-GEN-01';
+
+export interface IntakeField {
+  key: string;
+  label: string;
+  value: string | null; // null = not provided yet
+  critical: boolean;
+}
+
+export interface IntakeAnalysis {
+  detectedLanguage: string;
+  languageConfidence: number;
+  sentiment: Ticket['sentiment'];
+  sentimentSignals: string[];
+  priority: TicketPriority;
+  priorityReasons: string[];
+  templateId: IntakeTemplateId;
+  templateName: string;
+  ticketType: Ticket['type'];
+  swarmSquad: SwarmSquad;
+  templateConfidence: number;
+  fields: IntakeField[];
+  requiredApprovals: string[];
+  title: string;
+  englishSummary: string;
+  linkedAssetId?: string;
+  linkedSaasId?: string;
+  suggestedKbId?: string;
+  recommendedMacro?: Ticket['recommendedMacro'];
+  replyNative: string;
+  replyEnglish: string;
+  replyLanguage: string; // language the reply is actually written in
+  clarifyingQuestion: string | null;
+}
+
+export interface IntakeChatMessage {
+  id: string;
+  from: 'user' | 'agent';
+  text: string;
+  lang: string;
+  translation?: string; // English, when known
+  timestamp: string;
+}

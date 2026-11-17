@@ -23,9 +23,13 @@ import {
   type HandoffInput,
 } from '@/lib/rules';
 import { liveSlaSeconds } from '@/lib/sla';
+import { INTAKE_AGENT_NAME, LANGUAGE_NAMES } from '@/lib/intake';
 import type {
   AgentProfile,
+  EndUserProfile,
   FeatureFlags,
+  IntakeAnalysis,
+  IntakeChatMessage,
   InspectorTarget,
   KbArticle,
   ModuleKey,
@@ -37,7 +41,7 @@ import type {
   Toast,
 } from '@/types/platform';
 
-export type ViewKey = 'dashboard';
+export type ViewKey = 'dashboard' | 'portal';
 export type PaletteScope = 'all' | 'tickets' | 'assets' | 'saas' | 'vault' | 'macros';
 export interface BoardFilter {
   status: TicketStatus | 'ALL' | 'WAITING';
@@ -85,6 +89,7 @@ export interface PlatformState extends SeedState, UiState {
   grantJitAccess: (vaultId: string, ticketId: string, agentName: string) => ActionResult;
   revokeJitAccess: (vaultId: string) => ActionResult;
   simulateSentinelAlert: () => string;
+  createTicketFromIntake: (input: { requester: EndUserProfile; analysis: IntakeAnalysis; conversation: IntakeChatMessage[] }) => string;
   toggleFlag: (key: ModuleKey) => ActionResult;
   awardXp: (amount: number, reason: string) => void;
   resetDemo: () => void;
@@ -415,6 +420,56 @@ export const usePlatformStore = create<PlatformState>()(
             detail: `41 failed MFA challenges from ${ip} · auto-created ${id}`, assetId: 'MBP-0942', ticketId: id,
           });
           get().pushToast({ tone: 'error', title: `P1 ${id} created`, detail: 'Sentinel MFA brute-force on MBP-0942' });
+          return id;
+        },
+
+        // ------------------------------------------------------------ end-user intake
+        createTicketFromIntake: ({ requester, analysis: a, conversation }) => {
+          const st = get();
+          const id = nextTicketId(a.ticketType, st.tickets);
+          const now = Date.now();
+          const squadLead = AGENTS.find((ag) => ag.squad === a.swarmSquad)!.name;
+          const messages: TicketMessage[] = conversation.map((m) =>
+            m.from === 'user'
+              ? {
+                  id: uid('msg'), sender: requester.name, role: 'end_user', originalText: m.text, originalLang: m.lang,
+                  translatedText: m.lang !== 'en' ? m.translation : undefined, timestamp: m.timestamp,
+                }
+              : {
+                  id: uid('msg'), sender: INTAKE_AGENT_NAME, role: 'ai_system', originalText: m.text, originalLang: m.lang,
+                  translatedText: m.lang !== 'en' ? m.translation : undefined, timestamp: m.timestamp,
+                  metadata: { visibility: 'sent_to_requester' },
+                },
+          );
+          messages.push({
+            id: uid('msg'), sender: 'AdminZero AI', role: 'ai_system', originalLang: 'en', timestamp: nowIso(),
+            originalText: `Mapped to ${a.templateId} (${a.templateName}) at ${Math.round(a.templateConfidence * 100)}% confidence. ${a.priorityReasons.join(' · ')}. ${
+              a.linkedAssetId ? `Attached ${a.linkedAssetId} from CMDB. ` : ''
+            }Routed to ${a.swarmSquad} swarm. ${a.englishSummary}`,
+            metadata: {
+              template: a.templateId, confidence: a.templateConfidence.toFixed(2), language: LANGUAGE_NAMES[a.detectedLanguage] ?? a.detectedLanguage,
+              ...(a.suggestedKbId ? { suggestedKb: a.suggestedKbId } : {}),
+              ...(a.requiredApprovals.length ? { approvals: a.requiredApprovals.join(', ') } : {}),
+            },
+          });
+          const ticket: Ticket = {
+            id, type: a.ticketType, templateId: a.templateId, title: a.title, requesterName: requester.name,
+            requesterEmail: requester.email, detectedLanguage: a.detectedLanguage, channel: 'Portal', priority: a.priority,
+            sentiment: a.sentiment, status: 'AI_TRIAGED', swarmSquad: a.swarmSquad, activeSwarmAgents: [squadLead],
+            slaRemainingSeconds: SLA_TARGET_SECONDS[a.priority], slaPaused: false, linkedAssetId: a.linkedAssetId,
+            linkedSaasId: a.linkedSaasId, recommendedMacro: a.recommendedMacro, messages,
+          };
+          set((s2) => ({
+            tickets: [ticket, ...s2.tickets],
+            slaAnchors: { ...s2.slaAnchors, [id]: now },
+            assets: s2.assets.map((as) => (as.id === a.linkedAssetId ? { ...as, linkedTicketIds: [...as.linkedTicketIds, id] } : as)),
+          }));
+          addTelemetry({
+            source: 'AdminZero', severity: a.priority === 'P1' ? 'high' : 'info', title: `Portal intake → ${id}`,
+            detail: `${requester.name} (${a.detectedLanguage.toUpperCase()}) · ${a.templateId} · ${a.priority} · ${a.swarmSquad}`,
+            ticketId: id, assetId: a.linkedAssetId,
+          });
+          get().pushToast({ tone: 'success', title: `${id} routed to ${a.swarmSquad}`, detail: `${a.priority} · ${a.templateId}` });
           return id;
         },
 

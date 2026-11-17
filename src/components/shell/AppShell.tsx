@@ -10,9 +10,11 @@ import {
   LayoutDashboard,
   Laptop,
   Lock,
+  MessageCircleHeart,
   RotateCcw,
   Search,
   ShieldCheck,
+  Siren,
   Sparkles,
   Trophy,
 } from 'lucide-react';
@@ -93,14 +95,15 @@ function Sidebar() {
   const idleSeats = saasApps.reduce((n, a) => n + a.inactiveUsers.length, 0);
   const activeGrants = vault.filter((v) => v.activeGrant && Date.parse(v.activeGrant.expiresAt) > now).length;
 
-  const nav: { key: string; module: ModuleKey; label: string; badge?: string; tone?: 'rose'; active?: boolean; onClick: () => void }[] = [
+  const nav: { key: string; module: ModuleKey; icon?: typeof Bot; label: string; badge?: string; tone?: 'rose'; active?: boolean; onClick: () => void }[] = [
     { key: 'dashboard', module: 'itsm_core', label: 'Swarm Dashboard', badge: String(open.length),
       active: activeView === 'dashboard' && boardFilter.priority === 'ALL',
       onClick: () => { setView('dashboard'); setBoardFilter({ priority: 'ALL', status: 'ALL', query: '' }); } },
-    { key: 'p1', module: 'itsm_core', label: 'P1 Critical', badge: String(p1), tone: p1 ? 'rose' : undefined,
+    { key: 'p1', module: 'itsm_core', icon: Siren, label: 'P1 Critical', badge: String(p1), tone: p1 ? 'rose' : undefined,
       active: activeView === 'dashboard' && boardFilter.priority === 'P1',
       onClick: () => { setView('dashboard'); setBoardFilter({ priority: 'P1', status: 'ALL' }); } },
-    { key: 'macros', module: 'ai_agents', label: 'AI Macros', badge: String(macros), onClick: () => openPalette('macros') },
+    { key: 'portal', module: 'ai_agents', icon: MessageCircleHeart, label: 'End-User Portal', active: activeView === 'portal', onClick: () => setView('portal') },
+    { key: 'macros', module: 'ai_agents', icon: Sparkles, label: 'AI Macros', badge: String(macros), onClick: () => openPalette('macros') },
     { key: 'saas', module: 'torii_saas', label: 'SaaS Apps', badge: idleSeats ? `${idleSeats} idle` : String(saasApps.length), onClick: () => openPalette('saas') },
     { key: 'assets', module: 'itam_cmdb', label: 'CMDB Assets', badge: String(assets.length), onClick: () => openPalette('assets') },
     { key: 'vault', module: 'password_vault', label: 'JIT Vault', badge: activeGrants ? `${activeGrants} live` : undefined, onClick: () => openJitModal() },
@@ -151,7 +154,10 @@ function Sidebar() {
                     collapsed && 'justify-center',
                   )}
                 >
-                  <Icon className="size-4 shrink-0" />
+                  {(() => {
+                    const ItemIcon = item.icon ?? Icon;
+                    return <ItemIcon className="size-4 shrink-0" />;
+                  })()}
                   {!collapsed && <span className="flex-1 truncate text-left">{item.label}</span>}
                   {!collapsed && item.badge && (
                     <span

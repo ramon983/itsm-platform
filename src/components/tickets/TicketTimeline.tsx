@@ -78,6 +78,12 @@ function MessageCard({ message: m, showTranslation, when }: { message: TicketMes
           <span className="font-medium text-sky-300">{m.sender}</span>
           <span className="ml-2 text-slate-500">{when}</span>
           <p className="mt-0.5 leading-relaxed text-slate-300">{m.originalText}</p>
+          {showTranslation && m.translatedText && (
+            <p className="mt-1 flex gap-1.5 text-sky-200/80">
+              <Languages className="mt-0.5 size-3 shrink-0 text-sky-400" />
+              <span><span className="text-sky-300">English:</span> {m.translatedText}</span>
+            </p>
+          )}
         </div>
       </div>
     );

@@ -16,6 +16,16 @@ AdminZero is a human-centric ITSM platform with Torii-style SaaS governance, har
 - **Cross-module & SIEM telemetry feed.** "Simulate Sentinel SIEM Alert" injects an MFA brute-force alert on `MBP-0942` and creates a P1 ticket.
 - **Inspectors.** Asset and SaaS inspectors (including idle-seat reclaim), plus 1-hour JIT vault access tied to a ticket ID.
 
+## Phase 2: end-user portal (`#portal`)
+- **Chat.** A chat-first intake with language detection badges and a typing indicator. It has one-click presets in Spanish, French, Japanese and German, and you can also type freeform messages.
+- **Live inspector.** The panel beside the chat runs 3 animated AI steps and then fills in, section by section:
+  - language, sentiment and auto-priority (it shows why each priority was chosen)
+  - the empathetic reply in the user's language, with an English version for the agent
+  - the matched predefined template, with each field filled in or marked missing
+  - the auto-attached CMDB asset and the user's active SaaS licences
+- **Submit & Route to Swarm Queue.** Creates the ticket in the store, so it appears on the swarm board straight away.
+- **Offline mode.** With no backend connected, `src/lib/intake.ts` is a deterministic offline mapper. It writes native replies in English, Spanish, French, German, Japanese, Portuguese and Italian. If a critical field is missing it asks one clarifying question, and it only suggests self-service steps that come from KB articles.
+
 Everything runs against a Zustand store (`src/store/usePlatformStore.ts`) that saves to localStorage. It starts with seed data: 8 multilingual tickets, 6 CMDB assets, 6 SaaS apps, 5 vault items and 5 feature flags.
 
 ## Develop
