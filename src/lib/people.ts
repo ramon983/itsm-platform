@@ -58,17 +58,88 @@ export function celebrations(users: PlatformUser[], nowMs: number, upcomingDays 
 
 // ------------------------------------------------------------------ availability
 
-export const TIME_OFF_STYLE: Record<TimeOffType | 'Holiday', string> = {
-  PTO: 'bg-sky-500/70',
-  Sick: 'bg-rose-500/70',
-  Conference: 'bg-violet-500/70',
-  Parental: 'bg-amber-400/70',
-  Other: 'bg-slate-500/70',
-  Holiday: 'bg-emerald-500/60',
-};
-
 export const outOn = (person: string, dateYmd: string, timeOff: TimeOff[]) =>
   timeOff.find((t) => t.person === person && t.start <= dateYmd && t.end >= dateYmd);
+
+// ------------------------------------------------------------------ who's out (today + next N days)
+
+export type OutReason = TimeOffType | 'Holiday';
+
+export interface OutToday {
+  person: PlatformUser;
+  reason: OutReason;
+  label: string; // holiday name or time-off note
+  lastDay: string; // YYYY-MM-DD
+  back: Date; // first working day back
+  timeOffId?: string;
+}
+
+export interface ComingUp {
+  key: string;
+  start: string;
+  end: string;
+  reason: OutReason;
+  people: PlatformUser[];
+  label: string;
+  workdays: number;
+  timeOffId?: string;
+}
+
+const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const isWeekend = (d: Date) => d.getDay() === 0 || d.getDay() === 6;
+export const nextWorkday = (afterYmd: string) => {
+  let d = addDays(parseYmd(afterYmd), 1);
+  while (isWeekend(d)) d = addDays(d, 1);
+  return d;
+};
+export const workdaysBetween = (startYmd: string, endYmd: string) => {
+  let n = 0;
+  for (let d = parseYmd(startYmd); ymd(d) <= endYmd; d = addDays(d, 1)) if (!isWeekend(d)) n += 1;
+  return n;
+};
+
+/** Who is out today (time off or a public holiday in their country) and what's coming up in the next `days` days. */
+export function whosOut(
+  users: PlatformUser[],
+  timeOff: TimeOff[],
+  holidays: { date: string; name: string; country: string }[],
+  nowMs: number,
+  days = 30,
+): { today: OutToday[]; upcoming: ComingUp[] } {
+  const people = users.filter((u) => u.active);
+  const byName = new Map(people.map((u) => [u.name, u]));
+  const todayD = new Date(nowMs);
+  const today = ymd(todayD);
+  const horizon = ymd(addDays(todayD, days));
+
+  const outToday: OutToday[] = [];
+  for (const p of people) {
+    const off = timeOff.find((t) => t.person === p.name && t.start <= today && t.end >= today);
+    if (off) {
+      outToday.push({ person: p, reason: off.type, label: off.note ?? '', lastDay: off.end, back: nextWorkday(off.end), timeOffId: off.id });
+      continue;
+    }
+    const hol = holidays.find((h) => h.country === p.country && h.date === today);
+    if (hol) outToday.push({ person: p, reason: 'Holiday', label: hol.name, lastDay: today, back: nextWorkday(today) });
+  }
+
+  const upcoming: ComingUp[] = [];
+  for (const t of timeOff) {
+    const p = byName.get(t.person);
+    if (!p || t.start <= today || t.start > horizon) continue;
+    upcoming.push({ key: t.id, start: t.start, end: t.end, reason: t.type, people: [p], label: t.note ?? '', workdays: workdaysBetween(t.start, t.end), timeOffId: t.id });
+  }
+  const seen = new Set<string>();
+  for (const h of holidays) {
+    const k = `${h.date}-${h.country}`;
+    if (seen.has(k) || h.date <= today || h.date > horizon) continue;
+    seen.add(k);
+    const affected = people.filter((p) => p.country === h.country);
+    if (affected.length) upcoming.push({ key: `hol-${k}`, start: h.date, end: h.date, reason: 'Holiday', people: affected, label: h.name, workdays: isWeekend(parseYmd(h.date)) ? 0 : 1 });
+  }
+  upcoming.sort((a, b) => a.start.localeCompare(b.start) || a.people[0]!.name.localeCompare(b.people[0]!.name));
+  return { today: outToday.sort((a, b) => a.person.name.localeCompare(b.person.name)), upcoming };
+}
 
 // ------------------------------------------------------------------ on-call (weekly rotation per squad, handover Monday 09:00)
 

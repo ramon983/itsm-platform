@@ -1,6 +1,6 @@
 'use client';
 
-import { Celebrations, HolidaysPanel, TeamAvailability, useHolidays } from '@/components/home/PeoplePanels';
+import { Celebrations, HolidaysPanel, WhosOut, useHolidays } from '@/components/home/PeoplePanels';
 import { Spotlight } from '@/components/home/Spotlight';
 import { Last7DaysCard, NeedsHumanCard, OnCallCard, SlaHealthCard } from '@/components/home/TopCards';
 import { ToolStatusPanel } from '@/components/home/ToolStatusPanel';
@@ -35,7 +35,7 @@ export function HomeView() {
       <div className="grid items-start gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           <ToolStatusPanel />
-          <TeamAvailability holidays={holidays.holidays} />
+          <WhosOut holidays={holidays.holidays} />
         </div>
         <div className="space-y-5">
           <Celebrations />

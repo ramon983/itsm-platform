@@ -1,13 +1,13 @@
 'use client';
 
 import clsx from 'clsx';
-import { CalendarDays, CalendarPlus, Check, Download, Gift, PartyPopper, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Baby, CalendarDays, CalendarOff, CalendarPlus, Check, Download, Flag, Gift, PartyPopper, Presentation, RefreshCw, Thermometer, Trash2, TreePalm, Upload, UserCheck } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AvatarStack, Button, Card, Field, Modal, inputClass } from '@/components/ui/primitives';
 import { useNow } from '@/hooks/useNow';
 import { COUNTRY_NAMES, flag, upcomingHolidays, type Holiday } from '@/lib/holidays';
-import { TIME_OFF_STYLE, celebrations, exportIcs, importIcs, outOn, parseYmd, ymd } from '@/lib/people';
+import { celebrations, exportIcs, importIcs, parseYmd, whosOut, ymd, type OutReason } from '@/lib/people';
 import { usePlatformStore } from '@/store/usePlatformStore';
 import type { TimeOffType } from '@/types/platform';
 
@@ -84,25 +84,58 @@ export function Celebrations() {
   );
 }
 
-// ------------------------------------------------------------------ team availability
+// ------------------------------------------------------------------ who's out (today + next 30 days)
 
-export function TeamAvailability({ holidays }: { holidays: Holiday[] }) {
+/** Icon + text for every reason, so nothing depends on colour alone. */
+const REASON: Record<OutReason, { icon: typeof Flag; label: string; tone: string }> = {
+  PTO: { icon: TreePalm, label: 'PTO', tone: 'text-sky-300' },
+  Sick: { icon: Thermometer, label: 'Sick', tone: 'text-rose-300' },
+  Conference: { icon: Presentation, label: 'Conference', tone: 'text-violet-300' },
+  Parental: { icon: Baby, label: 'Parental leave', tone: 'text-amber-300' },
+  Other: { icon: CalendarOff, label: 'Out', tone: 'text-slate-300' },
+  Holiday: { icon: Flag, label: 'Public holiday', tone: 'text-emerald-300' },
+};
+
+function ReasonTag({ reason }: { reason: OutReason }) {
+  const r = REASON[reason];
+  return (
+    <span className={clsx('inline-flex items-center gap-1 rounded-full border border-white/[0.1] px-2 py-0.5 text-[11px]', r.tone)}>
+      <r.icon className="size-3" aria-hidden />
+      {r.label}
+    </span>
+  );
+}
+
+const DAY = 86_400_000;
+const relDay = (ymdStr: string, todayMs: number) => {
+  const diff = Math.round((parseYmd(ymdStr).getTime() - todayMs) / DAY);
+  return diff === 1 ? 'tomorrow' : diff < 7 ? weekday(parseYmd(ymdStr)) : `in ${diff} days`;
+};
+const backLabel = (back: Date, todayMs: number) => {
+  const diff = Math.round((back.getTime() - todayMs) / DAY);
+  return diff === 1 ? 'Back tomorrow' : diff < 7 ? `Back ${back.toLocaleDateString(undefined, { weekday: 'long' })}` : `Back ${monthDay(back)}`;
+};
+
+const COLLAPSED = 8;
+
+export function WhosOut({ holidays }: { holidays: Holiday[] }) {
   const users = usePlatformStore((s) => s.users);
   const timeOff = usePlatformStore((s) => s.timeOff);
+  const squads = usePlatformStore((s) => s.squads);
   const removeTimeOff = usePlatformStore((s) => s.removeTimeOff);
   const importTimeOff = usePlatformStore((s) => s.importTimeOff);
   const pushToast = usePlatformStore((s) => s.pushToast);
   const now = useNow();
   const fileRef = useRef<HTMLInputElement>(null);
   const [adding, setAdding] = useState(false);
-  const people = users.filter((u) => u.active);
+  const [squad, setSquad] = useState('all');
+  const [showAll, setShowAll] = useState(false);
+
+  const scoped = users.filter((u) => u.active && (squad === 'all' || u.squad === squad));
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
-  const days = Array.from({ length: 14 }, (_, i) => new Date(today.getTime() + i * 86_400_000));
-  const todayYmd = ymd(today);
-  const holidayFor = (country: string, d: string) => holidays.find((h) => h.country === country && h.date === d);
-  const outToday = people.filter((p) => outOn(p.name, todayYmd, timeOff) || holidayFor(p.country, todayYmd));
-  const upcoming = timeOff.filter((t) => t.end >= todayYmd).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 6);
+  const { today: outToday, upcoming } = whosOut(scoped, timeOff, holidays, today.getTime(), 30);
+  const shown = showAll ? upcoming : upcoming.slice(0, COLLAPSED);
 
   const download = () => {
     const blob = new Blob([exportIcs(timeOff, holidays)], { type: 'text/calendar' });
@@ -116,7 +149,7 @@ export function TeamAvailability({ holidays }: { holidays: Holiday[] }) {
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
-    const { entries, unmatched } = importIcs(await file.text(), people.map((p) => p.name));
+    const { entries, unmatched } = importIcs(await file.text(), users.filter((u) => u.active).map((p) => p.name));
     importTimeOff(entries);
     if (unmatched.length) pushToast({ tone: 'info', title: `${unmatched.length} event(s) skipped`, detail: 'No teammate name in the event title or attendees' });
     if (fileRef.current) fileRef.current.value = '';
@@ -125,9 +158,17 @@ export function TeamAvailability({ holidays }: { holidays: Holiday[] }) {
   return (
     <Card className="p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight"><CalendarDays className="size-4 text-sky-400" />Team availability</h2>
-        <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-xs text-emerald-200">{people.length - outToday.length} of {people.length} in today</span>
+        <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight"><CalendarDays className="size-4 text-sky-400" aria-hidden />Who’s out</h2>
+        <span className="inline-flex items-center gap-1 rounded-full border border-white/[0.1] px-2 py-0.5 text-xs text-emerald-200">
+          <UserCheck className="size-3" aria-hidden />{scoped.length - outToday.length} of {scoped.length} in today
+        </span>
         <span className="ml-auto flex flex-wrap gap-1.5">
+          {squads.length > 1 && (
+            <select aria-label="Filter by squad" className="h-8 max-w-[12rem] rounded-lg border border-slate-500 bg-white/[0.03] px-2 text-xs text-slate-100" value={squad} onChange={(e) => setSquad(e.target.value)}>
+              <option value="all" className="bg-slate-900">All squads</option>
+              {squads.map((q) => <option key={q} value={q} className="bg-slate-900">{q}</option>)}
+            </select>
+          )}
           <Button size="sm" onClick={() => setAdding(true)}><CalendarPlus className="size-3.5" />Add time off</Button>
           <Button size="sm" variant="ghost" onClick={() => fileRef.current?.click()} title="Import an .ics exported from Google Calendar or Outlook"><Upload className="size-3.5" />Import .ics</Button>
           <Button size="sm" variant="ghost" onClick={download} title="Download the team calendar to add to Google Calendar or Outlook"><Download className="size-3.5" />Export .ics</Button>
@@ -135,66 +176,76 @@ export function TeamAvailability({ holidays }: { holidays: Holiday[] }) {
         </span>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-separate border-spacing-y-1 text-xs">
-          <thead>
-            <tr>
-              <th className="w-40 text-left font-normal"><span className="sr-only">Teammate</span></th>
-              {days.map((d) => (
-                <th key={d.toISOString()} className={clsx('px-0.5 text-center font-normal', d.getDay() % 6 === 0 ? 'text-slate-600' : 'text-slate-400', ymd(d) === todayYmd && 'text-sky-300')}>
-                  <span className="block text-[10px]">{d.toLocaleDateString(undefined, { weekday: 'narrow' })}</span>
-                  <span className="block font-mono text-[10px]">{d.getDate()}</span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {people.map((p) => (
-              <tr key={p.email}>
-                <td className="pr-2">
-                  <span className="flex items-center gap-2">
-                    <AvatarStack names={[p.name]} max={1} />
-                    <span className="truncate text-slate-200">{p.name.split(' ')[0]}</span>
-                    <span title={COUNTRY_NAMES[p.country] ?? p.country}>{flag(p.country)}</span>
+      <section aria-labelledby="out-today">
+        <h3 id="out-today" className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Out today <span className="font-mono font-normal">{outToday.length}</span></h3>
+        {outToday.length === 0 ? (
+          <p className="rounded-lg border border-white/[0.06] px-3 py-3 text-sm text-slate-300">Everyone’s in today. 🎉</p>
+        ) : (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {outToday.map((o) => (
+              <li key={o.person.email} className="flex items-center gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                <AvatarStack names={[o.person.name]} max={1} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5 text-sm text-slate-100">
+                    <span className="truncate">{o.person.name}</span>
+                    <span title={COUNTRY_NAMES[o.person.country] ?? o.person.country} aria-label={COUNTRY_NAMES[o.person.country] ?? o.person.country}>{flag(o.person.country)}</span>
                   </span>
-                </td>
-                {days.map((d) => {
-                  const key = ymd(d);
-                  const off = outOn(p.name, key, timeOff);
-                  const hol = holidayFor(p.country, key);
-                  const weekend = d.getDay() % 6 === 0;
-                  const label = off ? `${p.name}: ${off.type}${off.note ? ` — ${off.note}` : ''}` : hol ? `${p.name}: ${hol.name} (${p.country})` : `${p.name}: ${weekend ? 'weekend' : 'available'}`;
-                  return (
-                    <td key={key} className="px-0.5">
-                      <span role="img" title={label} aria-label={label} className={clsx('block h-6 rounded-md', off ? TIME_OFF_STYLE[off.type] : hol ? TIME_OFF_STYLE.Holiday : weekend ? 'bg-white/[0.02]' : 'bg-white/[0.06]', key === todayYmd && 'ring-1 ring-sky-400/60')} />
-                    </td>
-                  );
-                })}
-              </tr>
+                  <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+                    <ReasonTag reason={o.reason} />
+                    {o.label && <span className="truncate">{o.label}</span>}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right text-xs text-slate-300">{backLabel(o.back, today.getTime())}</span>
+              </li>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+        )}
+      </section>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
-        {(['PTO', 'Sick', 'Conference', 'Parental', 'Holiday'] as const).map((k) => (
-          <span key={k} className="flex items-center gap-1"><span className={clsx('size-2.5 rounded-sm', TIME_OFF_STYLE[k])} />{k === 'Holiday' ? 'Public holiday' : k}</span>
-        ))}
-      </div>
-
-      {upcoming.length > 0 && (
-        <ul className="mt-3 divide-y divide-white/[0.05] border-t border-white/[0.06] pt-1 text-xs">
-          {upcoming.map((t) => (
-            <li key={t.id} className="flex items-center gap-2 py-1.5">
-              <span className={clsx('size-2 rounded-full', TIME_OFF_STYLE[t.type])} />
-              <span className="text-slate-200">{t.person}</span>
-              <span className="text-slate-500">{t.type}{t.note ? ` · ${t.note}` : ''}</span>
-              <span className="ml-auto font-mono text-slate-400">{monthDay(parseYmd(t.start))}{t.end !== t.start ? ` → ${monthDay(parseYmd(t.end))}` : ''}</span>
-              <Button size="sm" variant="ghost" onClick={() => removeTimeOff(t.id)} aria-label={`Remove ${t.person} ${t.type}`}><Trash2 className="size-3" /></Button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <section aria-labelledby="coming-up" className="mt-4">
+        <h3 id="coming-up" className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Coming up · next 30 days <span className="font-mono font-normal">{upcoming.length}</span></h3>
+        {upcoming.length === 0 ? (
+          <p className="rounded-lg border border-white/[0.06] px-3 py-3 text-sm text-slate-300">Nobody has time off booked in the next 30 days.</p>
+        ) : (
+          <ul className="divide-y divide-white/[0.06] rounded-lg border border-white/[0.06]">
+            {shown.map((u) => {
+              const start = parseYmd(u.start);
+              return (
+                <li key={u.key} className="flex items-center gap-3 px-3 py-2 text-sm">
+                  <span className="w-16 shrink-0 leading-tight">
+                    <span className="block font-mono text-xs text-slate-100">{monthDay(start)}</span>
+                    <span className="block text-[11px] text-slate-400">{relDay(u.start, today.getTime())}</span>
+                  </span>
+                  <AvatarStack names={u.people.map((p) => p.name)} max={3} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-slate-100">
+                      {u.reason === 'Holiday'
+                        ? `${flag(u.people[0]!.country)} ${u.label}`
+                        : u.people[0]!.name}
+                    </span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+                      <ReasonTag reason={u.reason} />
+                      {u.reason === 'Holiday' ? <span className="truncate">{u.people.map((p) => p.name.split(' ')[0]).join(', ')} off</span> : u.label && <span className="truncate">{u.label}</span>}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right text-xs text-slate-300">
+                    {u.end !== u.start ? <>to {monthDay(parseYmd(u.end))}<br /></> : null}
+                    <span className="text-slate-400">{u.workdays === 0 ? 'Weekend' : `${u.workdays} workday${u.workdays === 1 ? '' : 's'}`}</span>
+                  </span>
+                  {u.timeOffId ? (
+                    <Button size="sm" variant="ghost" onClick={() => removeTimeOff(u.timeOffId!)} aria-label={`Remove ${u.people[0]!.name} ${REASON[u.reason].label} starting ${monthDay(start)}`}><Trash2 className="size-3.5" /></Button>
+                  ) : <span className="w-8 shrink-0" aria-hidden />}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {upcoming.length > COLLAPSED && (
+          <Button size="sm" variant="ghost" className="mt-2" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
+            {showAll ? 'Show fewer' : `Show all ${upcoming.length}`}
+          </Button>
+        )}
+      </section>
       <AddTimeOffModal open={adding} onClose={() => setAdding(false)} />
     </Card>
   );

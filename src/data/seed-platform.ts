@@ -233,6 +233,8 @@ export function createPlatformSeed(now: number) {
     { id: 'to-3', person: 'Fatima Khan', type: 'Conference', start: ymd(day(2)), end: ymd(day(3)), note: 'SaaS Ops Summit', source: 'manual' },
     { id: 'to-4', person: 'Riley Park', type: 'PTO', start: ymd(day(6)), end: ymd(day(10)), source: 'manual' },
     { id: 'to-5', person: 'Jonas Weber', type: 'Parental', start: ymd(day(15)), end: ymd(day(40)), note: 'Parental leave 🍼', source: 'manual' },
+    { id: 'to-6', person: 'Mei Chen', type: 'PTO', start: ymd(day(21)), end: ymd(day(22)), note: 'Long weekend', source: 'manual' },
+    { id: 'to-7', person: 'Noor Haddad', type: 'Other', start: ymd(day(27)), end: ymd(day(27)), note: 'Moving house', source: 'manual' },
   ];
 
   const spotlight: SpotlightEntry[] = [

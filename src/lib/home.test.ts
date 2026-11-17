@@ -115,3 +115,28 @@ describe('holidays', () => {
     expect(r.failed).toEqual(['FR']);
   });
 });
+
+describe("who's out", () => {
+  it('lists who is out today with a return day, and time off + holidays starting in the next 30 days', async () => {
+    const { whosOut, ymd } = await import('@/lib/people');
+    const now = new Date(2026, 10, 18).getTime(); // Wed 18 Nov 2026
+    const users = [
+      { name: 'Ana', email: 'a@x', country: 'ES', squad: 'IT', active: true },
+      { name: 'Ben', email: 'b@x', country: 'GB', squad: 'IT', active: true },
+      { name: 'Cy', email: 'c@x', country: 'GB', squad: 'IT', active: true },
+    ] as unknown as import('@/types/platform').PlatformUser[];
+    const timeOff = [
+      { id: '1', person: 'Ana', type: 'PTO', start: '2026-11-16', end: '2026-11-20', source: 'manual' },
+      { id: '2', person: 'Ben', type: 'Sick', start: '2026-11-25', end: '2026-11-26', source: 'manual' },
+      { id: '3', person: 'Cy', type: 'PTO', start: '2027-01-05', end: '2027-01-06', source: 'manual' },
+    ] as import('@/types/platform').TimeOff[];
+    const holidays = [{ date: '2026-12-25', name: 'Christmas Day', country: 'GB' }];
+    const r = whosOut(users, timeOff, holidays, now, 30);
+    expect(r.today.map((o) => o.person.name)).toEqual(['Ana']);
+    expect(ymd(r.today[0]!.back)).toBe('2026-11-23'); // Friday off → back Monday
+    expect(r.upcoming.map((u) => u.key)).toEqual(['2']); // Christmas and January are beyond 30 days
+    expect(r.upcoming[0]!.workdays).toBe(2);
+    const later = whosOut(users, timeOff, holidays, new Date(2026, 11, 1).getTime(), 30);
+    expect(later.upcoming.find((u) => u.reason === 'Holiday')!.people.map((p) => p.name)).toEqual(['Ben', 'Cy']);
+  });
+});
