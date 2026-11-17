@@ -121,7 +121,7 @@ function Inbox3Col() {
       if (next) {
         e.preventDefault();
         selectTicket(next.id);
-        document.getElementById(`queue-${next.id}`)?.scrollIntoView({ block: 'nearest' });
+        document.getElementById(`queue-${next.id}`)?.scrollIntoView?.({ block: 'nearest' });
       }
     };
     window.addEventListener('keydown', onKey);
