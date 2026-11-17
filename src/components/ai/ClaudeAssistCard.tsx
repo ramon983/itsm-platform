@@ -52,7 +52,7 @@ export function ClaudeAssistCard({ subject, similar }: { subject: CopilotSubject
           </ul>
           {r.macro && <p className="text-indigo-200">Macro for approval: {r.macro.macro_id} — {r.macro.reason}</p>}
           {r.jit_elevation && <p className="text-emerald-200">JIT: {r.jit_elevation.credential} — {r.jit_elevation.reason}</p>}
-          <p className="rounded-lg bg-black/20 p-2 text-slate-200">{r.draft_reply}{r.draft_reply_english && <span className="mt-1 block text-sky-200/70">EN: {r.draft_reply_english}</span>}</p>
+          <p className="rounded-lg bg-code p-2 text-slate-200">{r.draft_reply}{r.draft_reply_english && <span className="mt-1 block text-sky-200/70">EN: {r.draft_reply_english}</span>}</p>
           {r.rejected_ungrounded.length > 0 && (
             <p className="flex items-center gap-1 text-amber-300"><ShieldCheck className="size-3" />Guardrail removed {r.rejected_ungrounded.length} ungrounded suggestion(s).</p>
           )}

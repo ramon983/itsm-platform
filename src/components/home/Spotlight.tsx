@@ -64,7 +64,7 @@ export function Spotlight() {
             ) : (
               <span className="text-7xl drop-shadow-lg" aria-hidden>{e.emoji}</span>
             )}
-            <span className="absolute left-3 top-3 rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-white backdrop-blur">{e.kind === 'pet' ? '🐾 Pet of the week' : '⭐ Team spotlight'}</span>
+            <span className="absolute left-3 top-3 rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-onaccent backdrop-blur">{e.kind === 'pet' ? '🐾 Pet of the week' : '⭐ Team spotlight'}</span>
           </div>
           <div className="flex flex-col p-5">
             <p className="text-xl font-semibold tracking-tight">{e.name} {e.photo && <span aria-hidden>{e.emoji}</span>}</p>
@@ -116,7 +116,7 @@ function AddSpotlightForm({ onClose, onAdded }: { onClose: () => void; onAdded: 
     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (addSpotlight({ ...f, subtitle: f.subtitle.trim() || (f.kind === 'pet' ? 'Office pet' : 'Teammate') }).ok) { onAdded(); onClose(); } }}>
       <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/[0.08] p-1">
         {(['pet', 'team'] as const).map((k) => (
-          <button key={k} type="button" onClick={() => setF({ ...f, kind: k, emoji: k === 'pet' ? '🐶' : '🏃' })} className={clsx('rounded-md py-1.5 text-sm', f.kind === k ? 'bg-indigo-600 text-white' : 'text-slate-400')}>
+          <button key={k} type="button" onClick={() => setF({ ...f, kind: k, emoji: k === 'pet' ? '🐶' : '🏃' })} className={clsx('rounded-md py-1.5 text-sm', f.kind === k ? 'bg-indigo-600 text-onaccent' : 'text-slate-400')}>
             {k === 'pet' ? '🐾 A pet' : '⭐ A teammate'}
           </button>
         ))}

@@ -62,7 +62,7 @@ function MessageCard({ message: m, showTranslation, when }: { message: TicketMes
         </div>
         <p className="font-mono text-xs leading-relaxed text-slate-200">{m.originalText}</p>
         {m.metadata?.command && (
-          <pre className="mt-2 overflow-x-auto rounded-md bg-black/40 px-2 py-1.5 font-mono text-[11px] text-emerald-300">$ {m.metadata.command}</pre>
+          <pre className="mt-2 overflow-x-auto rounded-md bg-code px-2 py-1.5 font-mono text-[11px] text-emerald-300">$ {m.metadata.command}</pre>
         )}
       </div>
     );

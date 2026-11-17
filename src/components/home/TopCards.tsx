@@ -14,10 +14,9 @@ import { usePlatformStore } from '@/store/usePlatformStore';
 
 const DAY = 86_400_000;
 
-function Shell({ icon, title, accent, onClick, children }: { icon: ReactNode; title: string; accent: string; onClick?: () => void; children: ReactNode }) {
+function Shell({ icon, title, onClick, children }: { icon: ReactNode; title: string; accent?: string; onClick?: () => void; children: ReactNode }) {
   const body = (
     <Card className={clsx('relative h-full overflow-hidden p-4 text-left transition', onClick && 'hover:border-white/[0.16]')}>
-      <span className={clsx('pointer-events-none absolute -right-8 -top-8 size-24 rounded-full blur-2xl', accent)} />
       <p className="flex items-center gap-2 text-xs font-medium text-slate-400">{icon}{title}</p>
       <div className="mt-2">{children}</div>
     </Card>

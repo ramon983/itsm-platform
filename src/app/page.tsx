@@ -51,9 +51,9 @@ export default function Home() {
 
   if (!hydrated) {
     return (
-      <div className="grid h-dvh place-items-center bg-[#090D16]">
+      <div className="grid h-dvh place-items-center bg-canvas">
         <div className="flex items-center gap-3 text-sm text-slate-400">
-          <span className="grid size-8 animate-pulse place-items-center rounded-lg bg-indigo-600 font-mono text-sm font-bold text-white">A0</span>
+          <span className="grid size-8 animate-pulse place-items-center rounded-lg bg-indigo-600 font-mono text-sm font-bold text-onaccent">A0</span>
           Loading AdminZero…
         </div>
       </div>

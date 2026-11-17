@@ -236,7 +236,7 @@ function TicketInspector({ ticket, onClose }: { ticket: Ticket; onClose: () => v
               <Sparkles className="size-3.5" />AI-recommended remediation · human approval required
             </div>
             <p className="mt-1.5 text-sm text-slate-100">{ticket.recommendedMacro.label}</p>
-            <pre className="mt-2 overflow-x-auto rounded-md bg-black/40 px-2 py-1.5 font-mono text-[11px] text-slate-400">$ {ticket.recommendedMacro.command}</pre>
+            <pre className="mt-2 overflow-x-auto rounded-md bg-code px-2 py-1.5 font-mono text-[11px] text-slate-400">$ {ticket.recommendedMacro.command}</pre>
             <div className="mt-2.5 flex flex-wrap gap-2">
               <Button size="sm" variant="primary" onClick={() => executeMacro(ticket.id)} disabled={resolved}>
                 <Zap className="size-3.5" />Approve & execute <Kbd>E</Kbd>

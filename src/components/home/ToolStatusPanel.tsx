@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import { CheckCircle2, ExternalLink, RefreshCw, Search, Settings2, TriangleAlert, Wrench } from 'lucide-react';
+import { CheckCircle2, CircleHelp, ExternalLink, OctagonAlert, RefreshCw, Search, Settings2, TriangleAlert, Wrench, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button, Card, Modal, inputClass } from '@/components/ui/primitives';
@@ -13,15 +13,22 @@ import { usePlatformStore } from '@/store/usePlatformStore';
 
 const POLL_MS = 3 * 60_000;
 
-export const LEVEL_DOT: Record<StatusLevel, string> = {
-  operational: 'bg-emerald-400',
-  maintenance: 'bg-sky-400',
-  degraded: 'bg-amber-400',
-  partial_outage: 'bg-orange-500',
-  major_outage: 'bg-rose-500 animate-pulse',
-  unknown: 'bg-slate-500',
-  link_only: 'bg-slate-600',
+// Shape + colour: check = fine, triangle = degraded, octagon = outage, wrench = maintenance (colour-blind safe).
+export const LEVEL_ICON: Record<StatusLevel, { icon: LucideIcon; className: string }> = {
+  operational: { icon: CheckCircle2, className: 'text-emerald-400' },
+  maintenance: { icon: Wrench, className: 'text-sky-400' },
+  degraded: { icon: TriangleAlert, className: 'text-amber-400' },
+  partial_outage: { icon: OctagonAlert, className: 'text-orange-400' },
+  major_outage: { icon: OctagonAlert, className: 'text-rose-400' },
+  unknown: { icon: CircleHelp, className: 'text-slate-500' },
+  link_only: { icon: ExternalLink, className: 'text-slate-500' },
 };
+
+function LevelIcon({ level, loading }: { level: StatusLevel; loading?: boolean }) {
+  if (loading) return <span className="size-3.5 shrink-0 animate-pulse rounded-full bg-slate-600" aria-hidden />;
+  const { icon: Icon, className } = LEVEL_ICON[level];
+  return <Icon className={clsx('size-3.5 shrink-0', className)} aria-hidden />;
+}
 
 /** Polls the selected tools' public status APIs every 3 minutes while Home is open. */
 function useToolStatuses(ids: string[]) {
@@ -85,14 +92,13 @@ export function ToolStatusPanel() {
           const level: StatusLevel = st?.level ?? (t.api === 'link' ? 'link_only' : 'unknown');
           const inner = (
             <>
-              <span className={clsx('size-2 shrink-0 rounded-full', st ? LEVEL_DOT[level] : 'bg-slate-600 animate-pulse')} />
+              <LevelIcon level={level} loading={!st && level !== 'link_only'} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] text-slate-100">{t.name}</span>
                 <span className={clsx('block truncate text-[11px]', isDown(level) ? 'text-amber-200' : 'text-slate-500')}>
                   {st ? (isDown(level) && st.incidents[0] ? st.incidents[0].name : LEVEL_LABEL[level]) : 'Checking…'}
                 </span>
               </span>
-              {level === 'link_only' && <ExternalLink className="size-3 shrink-0 text-slate-500" />}
             </>
           );
           const cls = clsx('flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition hover:border-white/[0.16]', isDown(level) ? 'border-amber-400/30 bg-amber-400/[0.05]' : 'border-white/[0.06] bg-white/[0.02]');
@@ -181,7 +187,7 @@ function ToolDetailModal({ tool, status, onClose }: { tool?: ToolDef; status?: T
               <ul className="space-y-1">
                 {status.affectedComponents.map((c) => (
                   <li key={c.name} className="flex items-center gap-2 text-xs">
-                    <span className={clsx('size-2 rounded-full', /major/.test(c.status) ? 'bg-rose-500' : /partial/.test(c.status) ? 'bg-orange-500' : /maintenance/.test(c.status) ? 'bg-sky-400' : 'bg-amber-400')} />
+                    <LevelIcon level={/major/.test(c.status) ? 'major_outage' : /partial/.test(c.status) ? 'partial_outage' : /maintenance/.test(c.status) ? 'maintenance' : 'degraded'} />
                     <span className="text-slate-200">{c.name}</span>
                     <span className="ml-auto capitalize text-slate-500">{c.status}</span>
                   </li>

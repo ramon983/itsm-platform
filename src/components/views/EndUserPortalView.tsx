@@ -42,6 +42,16 @@ const SECTION_COUNT = 6;
 type Phase = 'idle' | 'analyzing' | 'ready' | 'submitted' | 'deflected';
 
 const uid = () => crypto.randomUUID().slice(0, 8);
+
+// Freshservice-style service catalog: one click starts the conversation with a sensible first message.
+const CATALOG: { emoji: string; label: string; starter: string }[] = [
+  { emoji: '🔐', label: 'Reset my MFA', starter: 'I got a new phone and need to reset my Okta MFA.' },
+  { emoji: '💻', label: 'Laptop problem', starter: 'My laptop is having a problem: ' },
+  { emoji: '🌐', label: 'VPN or Wi-Fi help', starter: "I can't connect to the VPN since " },
+  { emoji: '📦', label: 'Request software', starter: 'I need a licence for ' },
+  { emoji: '🔑', label: 'Access to an app', starter: 'I need access to ' },
+  { emoji: '🧑‍💼', label: 'New hire setup', starter: 'We have a new starter joining on ' },
+];
 const KNOWN_TEMPLATES = ['#INC-NET-04', '#SR-HW-01', '#SR-SAAS-09', '#CHG-SEC-02', '#INC-SEC-01', '#INC-GEN-01'] as const;
 
 /** Claude's answer (live API) layered over the offline analysis, which still supplies CMDB fields and macros. */
@@ -207,8 +217,8 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
       {/* ------------------------------------------------------------ left: chat */}
       <section className="flex min-h-0 flex-col border-white/[0.08] lg:border-r" aria-label="Conversational intake chat">
         <header className="flex flex-wrap items-center gap-3 border-b border-white/[0.08] px-5 py-3">
-          <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500 shadow-[0_0_20px_rgba(99,102,241,0.35)]">
-            <MessageCircleHeart className="size-4.5 text-white" />
+          <span className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-indigo-500 to-sky-500">
+            <MessageCircleHeart className="size-4.5 text-onaccent" />
           </span>
           <div className="min-w-0">
             <h1 className="text-sm font-semibold tracking-tight">AdminZero Help</h1>
@@ -242,6 +252,30 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
 
         <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto scroll-smooth px-5 py-6">
           <AgentBubble text={`Hi ${persona.name.split(' ')[0]} 👋 I'm the AdminZero IT assistant. Tell me what's going on, in whatever language you like.`} lang="en" />
+          {phase === 'idle' && chat.length === 0 && (
+            <div className="ml-10" aria-label="Popular requests">
+              <p className="mb-2 text-xs text-slate-500">Popular requests — or just type below</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {CATALOG.map((c) => (
+                  <button
+                    key={c.label}
+                    type="button"
+                    onClick={() => {
+                      setInput(c.starter);
+                      requestAnimationFrame(() => {
+                        const el = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]');
+                        el?.focus();
+                        el?.setSelectionRange(c.starter.length, c.starter.length);
+                      });
+                    }}
+                    className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 text-left text-sm text-slate-200 transition hover:border-indigo-500/40 hover:bg-indigo-500/[0.06]"
+                  >
+                    <span className="text-lg" aria-hidden>{c.emoji}</span>{c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {chat.map((m) => (m.from === 'user' ? <UserBubble key={m.id} message={m} /> : <AgentBubble key={m.id} text={m.text} lang={m.lang} />))}
           {deflection && phase === 'ready' && (
             <div className="az-pop-in ml-10 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 text-sm" aria-label="Suggested self-service fix">
@@ -343,7 +377,7 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
       </section>
 
       {/* ------------------------------------------------------------ right: live inspector */}
-      <aside className="min-h-0 overflow-y-auto bg-[#0b101b]/60 p-5" aria-label="Live structured template inspector">
+      <aside className="min-h-0 overflow-y-auto bg-sunken p-5" aria-label="Live structured template inspector">
         <div className="mb-4 flex items-center gap-2">
           <FileJson className="size-4 text-indigo-400" />
           <h2 className="text-sm font-semibold tracking-tight">Live ITSM Template & CMDB Context</h2>
@@ -376,7 +410,7 @@ function UserBubble({ message: m }: { message: IntakeChatMessage }) {
   return (
     <div className="az-pop-in flex justify-end">
       <div className="max-w-[78%]">
-        <div className="rounded-2xl rounded-br-md bg-indigo-600 px-3.5 py-2.5 text-sm leading-relaxed text-white shadow-[0_0_20px_rgba(99,102,241,0.2)]">
+        <div className="rounded-2xl rounded-br-md bg-indigo-600 px-3.5 py-2.5 text-sm leading-relaxed text-onaccent">
           {m.text}
         </div>
         <p className="mt-1 flex items-center justify-end gap-1.5 text-[10px] text-slate-500">
@@ -592,7 +626,7 @@ function InspectorSections({ analysis: a, persona, revealed, phase, submittedId,
       )}
 
       <Reveal show={revealed >= SECTION_COUNT}>
-        <div className="sticky bottom-0 -mx-5 -mb-5 space-y-2 border-t border-white/[0.06] bg-[#0b101b]/95 px-5 pb-5 pt-3 backdrop-blur-md">
+        <div className="sticky bottom-0 -mx-5 -mb-5 space-y-2 border-t border-white/[0.06] bg-sidebar/95 px-5 pb-5 pt-3 backdrop-blur-md">
           {missing.length > 0 && phase !== 'submitted' && (
             <p className="flex items-center gap-1.5 text-xs text-amber-300">
               <AlertTriangle className="size-3.5" />Waiting on the user for: {missing.map((f) => f.label.toLowerCase()).join(', ')}. You can still submit now.

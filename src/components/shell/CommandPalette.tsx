@@ -37,7 +37,7 @@ export function CommandPalette() {
   if (!palette.open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]" role="dialog" aria-modal="true" aria-label="Command palette">
-      <button type="button" aria-label="Close command palette" className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
+      <button type="button" aria-label="Close command palette" className="absolute inset-0 bg-scrim" onClick={close} />
       <PaletteBody initialScope={palette.scope} onClose={close} />
     </div>
   );
@@ -174,7 +174,7 @@ function PaletteBody({ initialScope, onClose }: { initialScope: PaletteScope; on
   };
 
   return (
-    <div className="az-pop-in relative w-full max-w-2xl overflow-hidden rounded-2xl border border-white/[0.1] bg-[#0f1424]/95 shadow-2xl backdrop-blur-xl">
+    <div className="az-pop-in relative w-full max-w-2xl overflow-hidden rounded-2xl border border-white/[0.1] bg-raised shadow-2xl ">
       <div className="flex items-center gap-3 border-b border-white/[0.08] px-4">
         <Search className="size-4 text-slate-500" />
         <input
@@ -202,7 +202,7 @@ function PaletteBody({ initialScope, onClose }: { initialScope: PaletteScope; on
             }}
             className={clsx(
               'rounded-md px-2 py-1 text-xs transition',
-              scope === sc.key ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200',
+              scope === sc.key ? 'bg-indigo-600 text-onaccent' : 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-200',
             )}
           >
             {sc.label}

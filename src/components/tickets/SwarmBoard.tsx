@@ -89,7 +89,7 @@ export function SwarmBoard({ onOpen, types }: { onOpen?: (ticketId: string) => v
               onDragLeave={() => setOverSquad((s) => (s === squad ? null : s))}
               onDrop={() => drop(squad)}
               className={clsx(
-                'flex min-h-[420px] flex-col rounded-xl border bg-slate-900/50 p-2.5 transition',
+                'flex min-h-[420px] flex-col rounded-xl border bg-sunken p-2.5 transition',
                 overSquad === squad && dragging ? 'border-indigo-500/50 bg-indigo-500/[0.05]' : 'border-white/[0.08]',
               )}
             >
@@ -154,7 +154,7 @@ function TicketCard({ ticket: t, onOpen, onDragStart, onDragEnd, dragging }: { t
       onDragEnd={onDragEnd}
       onClick={() => (onOpen ? onOpen(t.id) : openInspector({ kind: 'ticket', id: t.id }))}
       className={clsx(
-        'group w-full rounded-lg border bg-[#0f1424] p-3 text-left transition hover:border-white/[0.16] hover:bg-[#121a2d]',
+        'group w-full rounded-lg border bg-raised p-3 text-left transition hover:border-white/[0.16] hover:bg-raised-hover',
         t.priority === 'P1' && t.status !== 'RESOLVED_KB_LINKED' ? 'border-rose-500/30' : 'border-white/[0.08]',
         t.status === 'RESOLVED_KB_LINKED' && 'opacity-60',
         dragging && 'opacity-40',

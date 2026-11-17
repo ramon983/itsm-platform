@@ -25,6 +25,7 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { CommandPalette } from '@/components/shell/CommandPalette';
+import { ThemeSwitcher, useApplyTheme } from '@/components/shell/ThemeSwitcher';
 import { AssetInspectorDrawer } from '@/components/inspectors/AssetInspectorDrawer';
 import { JitAccessModal } from '@/components/inspectors/JitAccessModal';
 import { SaasInspectorDrawer } from '@/components/inspectors/SaasInspectorDrawer';
@@ -55,6 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const openPalette = usePlatformStore((s) => s.openPalette);
   const paletteOpen = usePlatformStore((s) => s.palette.open);
   const closePalette = usePlatformStore((s) => s.closePalette);
+  useApplyTheme();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -69,7 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [openPalette, closePalette, paletteOpen]);
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-[#090D16] text-slate-100">
+    <div className="flex h-dvh overflow-hidden bg-canvas text-slate-100">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
@@ -159,9 +161,9 @@ function Sidebar() {
   );
 
   return (
-    <aside className={clsx('flex shrink-0 flex-col border-r border-white/[0.08] bg-[#0b101b] transition-[width] duration-200', collapsed ? 'w-[60px]' : 'w-60')}>
+    <aside className={clsx('flex shrink-0 flex-col border-r border-white/[0.08] bg-sidebar transition-[width] duration-200', collapsed ? 'w-[60px]' : 'w-60')}>
       <div className="flex h-14 items-center gap-2 border-b border-white/[0.06] px-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-indigo-600 font-mono text-sm font-bold shadow-[0_0_20px_rgba(99,102,241,0.35)]">A0</span>
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-indigo-600 font-mono text-sm font-bold">A0</span>
         {!collapsed && (
           <div className="min-w-0 leading-tight">
             <p className="text-sm font-semibold tracking-tight">AdminZero</p>
@@ -241,7 +243,7 @@ function TopBar() {
   const autonomy = { suggest_only: 'Suggest only', self_service_deflection: 'Self-service', auto_resolve_low_risk: 'Auto-resolve low risk' }[aiSettings.autonomy];
 
   return (
-    <header className="relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.08] bg-[#090D16]/80 px-4 backdrop-blur-md">
+    <header className="relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.08] bg-canvas/85 px-4 backdrop-blur-md">
       <button
         type="button"
         onClick={() => openPalette()}
@@ -253,6 +255,7 @@ function TopBar() {
       </button>
 
       <div className="ml-auto flex items-center gap-2">
+        <ThemeSwitcher />
         {flags.ai_agents && (
           <button type="button" onClick={() => setView('admin')} className="hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-sky-500/30 px-2.5 py-1 text-[11px] font-medium text-sky-200 md:flex" title="AI autonomy — change in Admin → AI & grounding">
             <Sparkles className="size-3.5" />AI · {autonomy}
@@ -273,7 +276,7 @@ function TopBar() {
             Secret Manager
           </button>
           {secretsOpen && (
-            <div className="az-pop-in absolute right-0 top-9 z-30 w-80 rounded-xl border border-white/[0.1] bg-[#0f1424] p-3.5 text-xs shadow-2xl">
+            <div className="az-pop-in absolute right-0 top-9 z-30 w-80 rounded-xl border border-white/[0.1] bg-raised p-3.5 text-xs shadow-2xl">
               <p className="font-semibold text-slate-100">Google Cloud Secret Manager</p>
               <p className="mt-1 text-slate-400">
                 {apiHealth.state === 'up'

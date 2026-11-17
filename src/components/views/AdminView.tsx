@@ -123,9 +123,9 @@ function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onCh
       aria-label={label}
       disabled={disabled}
       onClick={onChange}
-      className={clsx('relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60', checked ? 'bg-indigo-600 shadow-[0_0_12px_rgba(99,102,241,0.4)]' : 'bg-white/[0.12]')}
+      className={clsx('relative h-6 w-11 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-60', checked ? 'bg-indigo-600' : 'bg-white/[0.12]')}
     >
-      <span className={clsx('absolute top-0.5 size-5 rounded-full bg-white transition-all', checked ? 'left-[22px]' : 'left-0.5')} />
+      <span className={clsx('absolute top-0.5 size-5 rounded-full bg-onaccent shadow-sm transition-all', checked ? 'left-[22px]' : 'left-0.5')} />
     </button>
   );
 }
@@ -521,7 +521,7 @@ function IntegrationsTab() {
       <div className="grid gap-3 md:grid-cols-2">
         {integrations.map((i) => (
           <Card key={i.key} className="flex items-start gap-3 p-4">
-            <span className={clsx('mt-0.5 size-2.5 shrink-0 rounded-full', (i.key === 'secret_manager' ? smConnected : i.connected) ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-slate-600')} />
+            <span className={clsx('mt-0.5 size-2.5 shrink-0 rounded-full', (i.key === 'secret_manager' ? smConnected : i.connected) ? 'bg-emerald-400' : 'bg-slate-600')} />
             <div className="min-w-0 flex-1">
               <p className="font-medium text-slate-100">{i.name} <span className="ml-1 text-[11px] font-normal text-slate-500">{i.category}</span></p>
               <p className="mt-0.5 text-xs text-slate-400">{i.detail}</p>

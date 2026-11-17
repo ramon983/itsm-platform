@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import { CheckCircle2, Info, X, XCircle } from 'lucide-react';
+import { CheckCircle2, CircleDot, Info, OctagonAlert, PauseCircle, Sparkles, TriangleAlert, Users, X, XCircle, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -19,25 +19,40 @@ export const STATUS_STYLE: Record<TicketStatus, string> = {
   RESOLVED_KB_LINKED: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
 };
 
+// Every status has its own icon shape, so meaning never depends on colour alone (colour-blind safe).
+const STATUS_ICON: Record<TicketStatus, LucideIcon> = {
+  AI_TRIAGED: Sparkles,
+  ACTIVE_SWARM: Users,
+  WAITING_ON_CUSTOMER: PauseCircle,
+  WAITING_ON_VENDOR: PauseCircle,
+  RESOLVED_KB_LINKED: CheckCircle2,
+};
+
 export function StatusBadge({ status, className }: { status: TicketStatus; className?: string }) {
+  const Icon = STATUS_ICON[status];
   return (
     <span className={clsx('inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[11px] font-medium', STATUS_STYLE[status], className)}>
-      {status.startsWith('WAITING') && <span aria-hidden>⏸</span>}
+      <Icon className="size-3" aria-hidden />
       {STATUS_LABEL[status]}
     </span>
   );
 }
 
 const PRIORITY_STYLE: Record<TicketPriority, string> = {
-  P1: 'text-rose-400 bg-rose-500/10 border-rose-500/30 animate-pulse',
+  P1: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
   P2: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
   P3: 'text-slate-300 bg-white/[0.04] border-white/[0.08]',
   P4: 'text-slate-400 bg-white/[0.02] border-white/[0.06]',
 };
 
+const PRIORITY_ICON: Record<TicketPriority, LucideIcon> = { P1: OctagonAlert, P2: TriangleAlert, P3: CircleDot, P4: CircleDot };
+
 export function PriorityBadge({ priority }: { priority: TicketPriority }) {
+  const Icon = PRIORITY_ICON[priority];
   return (
-    <span className={clsx('whitespace-nowrap rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold', PRIORITY_STYLE[priority])}>
+    <span className={clsx('inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-semibold', PRIORITY_STYLE[priority])}>
+      {/* Only the P1 icon pulses (not the whole badge); disabled under prefers-reduced-motion. */}
+      <Icon className={clsx('size-3', priority === 'P1' && 'animate-pulse')} aria-hidden />
       {priority === 'P1' ? 'P1 CRITICAL' : priority}
     </span>
   );
@@ -78,7 +93,7 @@ export function AvatarStack({ names, max = 3 }: { names: string[]; max?: number 
             key={name}
             title={name}
             className={clsx(
-              'grid size-6 place-items-center rounded-full text-[10px] font-semibold text-white ring-2 ring-[#0d1220]',
+              'grid size-6 place-items-center rounded-full text-[10px] font-semibold text-onaccent ring-2 ring-surface',
               agent?.color ?? 'bg-slate-600',
             )}
           >
@@ -87,7 +102,7 @@ export function AvatarStack({ names, max = 3 }: { names: string[]; max?: number 
         );
       })}
       {names.length > max && (
-        <span className="grid size-6 place-items-center rounded-full bg-slate-700 text-[10px] text-slate-200 ring-2 ring-[#0d1220]">
+        <span className="grid size-6 place-items-center rounded-full bg-slate-700 text-[10px] text-slate-200 ring-2 ring-surface">
           +{names.length - max}
         </span>
       )}
@@ -97,7 +112,7 @@ export function AvatarStack({ names, max = 3 }: { names: string[]; max?: number 
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="rounded border border-white/[0.12] bg-white/[0.06] px-1 font-mono text-[10px] text-slate-400">{children}</kbd>
+    <kbd className="rounded border border-current/25 bg-current/10 px-1 font-mono text-[10px] opacity-80">{children}</kbd>
   );
 }
 
@@ -114,7 +129,7 @@ export function Button({
       className={clsx(
         'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium tracking-tight transition-colors disabled:cursor-not-allowed disabled:opacity-40',
         size === 'sm' ? 'h-7 px-2.5 text-xs' : 'h-9 px-3.5 text-sm',
-        variant === 'primary' && 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.25)] hover:bg-indigo-500',
+        variant === 'primary' && 'bg-indigo-600 text-onaccent hover:bg-indigo-500',
         variant === 'secondary' && 'border border-white/[0.08] bg-white/[0.03] text-slate-200 hover:border-white/[0.16] hover:bg-white/[0.06]',
         variant === 'ghost' && 'text-slate-400 hover:bg-white/[0.05] hover:text-slate-100',
         variant === 'danger' && 'border border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20',
@@ -126,7 +141,7 @@ export function Button({
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={clsx('rounded-xl border border-white/[0.08] bg-slate-900/80 backdrop-blur-md', className)}>{children}</div>
+    <div className={clsx('rounded-xl border border-white/[0.08] bg-surface shadow-card', className)}>{children}</div>
   );
 }
 
@@ -150,8 +165,8 @@ export function Drawer({ open, onClose, children, label }: { open: boolean; onCl
   // Portalled to <body>: an ancestor with backdrop-filter would otherwise trap `position: fixed` inside it.
   return createPortal(
     <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label={label}>
-      <button type="button" aria-label="Close drawer" className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
-      <aside className="az-slide-in absolute inset-y-0 right-0 flex w-full max-w-[540px] flex-col border-l border-white/[0.08] bg-[#0d1220] shadow-2xl">
+      <button type="button" aria-label="Close drawer" className="absolute inset-0 bg-scrim" onClick={onClose} />
+      <aside className="az-slide-in absolute inset-y-0 right-0 flex w-full max-w-[540px] flex-col border-l border-white/[0.08] bg-raised shadow-2xl">
         {children}
       </aside>
     </div>,
@@ -182,8 +197,8 @@ export function Modal({
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4" role="dialog" aria-modal="true" aria-label={title}>
-      <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div ref={ref} className={clsx('az-pop-in relative w-full rounded-2xl border border-white/[0.1] bg-[#0f1424] p-5 shadow-2xl', width)}>
+      <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-scrim" onClick={onClose} />
+      <div ref={ref} className={clsx('az-pop-in relative w-full rounded-2xl border border-white/[0.1] bg-raised p-5 shadow-2xl', width)}>
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-slate-100">{title}</h2>
@@ -211,7 +226,7 @@ export function Toaster() {
           <div
             key={t.id}
             className={clsx(
-              'az-pop-in pointer-events-auto flex gap-3 rounded-xl border bg-[#0f1424]/95 p-3 shadow-xl backdrop-blur-md',
+              'az-pop-in pointer-events-auto flex gap-3 rounded-xl border bg-raised p-3 shadow-xl backdrop-blur-md',
               t.tone === 'success' && 'border-emerald-500/30',
               t.tone === 'error' && 'border-rose-500/30',
               t.tone === 'info' && 'border-indigo-500/30',

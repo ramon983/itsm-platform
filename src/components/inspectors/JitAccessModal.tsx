@@ -70,7 +70,7 @@ function JitForm({ initialVaultId, initialTicketId }: { initialVaultId?: string;
             <span className="font-mono text-base font-semibold text-emerald-200">{formatSla(remaining)}</span>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 truncate rounded-lg bg-black/40 px-3 py-2 font-mono text-sm tracking-wider text-slate-100">{active.token}</code>
+            <code className="flex-1 truncate rounded-lg bg-code px-3 py-2 font-mono text-sm tracking-wider text-slate-100">{active.token}</code>
             <Button size="sm" onClick={copy} aria-label="Copy token">
               {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
             </Button>

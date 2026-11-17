@@ -241,7 +241,7 @@ function Arcade() {
         {board.map((a, i) => (
           <li key={a.name} className={clsx('flex items-center gap-2.5 text-xs', a.name === CURRENT_AGENT ? 'text-amber-200' : 'text-slate-300')}>
             <span className="w-4 font-mono text-slate-500">{i + 1}</span>
-            <span className={clsx('grid size-6 place-items-center rounded-full text-[10px] font-semibold text-white', a.color)}>{a.initials}</span>
+            <span className={clsx('grid size-6 place-items-center rounded-full text-[10px] font-semibold text-onaccent', a.color)}>{a.initials}</span>
             <span className="flex-1">{a.name}</span>
             <span className="text-slate-500">{a.solved} solved</span>
             <span className="w-16 text-right font-mono">{a.xp.toLocaleString()} XP</span>

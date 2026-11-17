@@ -66,14 +66,17 @@ export interface BoardFilter {
   priority: 'ALL' | 'P1';
   query: string;
 }
+export type ThemePreference = 'system' | 'light' | 'dark';
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 interface UiState {
   activeView: ViewKey;
   selectedTicketId: string | null;
+  openTicketTabs: string[];
   inspector: InspectorTarget;
   palette: { open: boolean; scope: PaletteScope };
   sidebarCollapsed: boolean;
+  themePreference: ThemePreference;
   toasts: Toast[];
   jitModal: { open: boolean; vaultId?: string; ticketId?: string };
   boardFilter: BoardFilter;
@@ -92,6 +95,7 @@ export interface PlatformState extends SeedState, UiState {
   openPalette: (scope?: PaletteScope) => void;
   closePalette: () => void;
   toggleSidebar: () => void;
+  setThemePreference: (pref: ThemePreference) => void;
   pushToast: (toast: Omit<Toast, 'id'>) => void;
   dismissToast: (id: string) => void;
   openJitModal: (opts?: { vaultId?: string; ticketId?: string }) => void;
@@ -116,6 +120,7 @@ export interface PlatformState extends SeedState, UiState {
 
   // tickets workspace
   selectTicket: (ticketId: string | null) => void;
+  closeTicketTab: (ticketId: string) => void;
   addReply: (ticketId: string, reply: { text: string; translatedText?: string; lang: string; internal: boolean }) => ActionResult;
   linkJiraIssue: (ticketId: string, key: string) => ActionResult;
 
@@ -195,9 +200,11 @@ export const MODULE_LABEL: Record<ModuleKey, string> = {
 const initialUi = (): UiState => ({
   activeView: 'dashboard',
   selectedTicketId: null,
+  openTicketTabs: [],
   inspector: null,
   palette: { open: false, scope: 'all' },
   sidebarCollapsed: false,
+  themePreference: 'system',
   toasts: [],
   jitModal: { open: false },
   boardFilter: { status: 'ALL', priority: 'ALL', query: '' },
@@ -265,12 +272,23 @@ export const usePlatformStore = create<PlatformState>()(
 
         // ------------------------------------------------------------ ui
         setView: (activeView) => set({ activeView, inspector: null }),
-        selectTicket: (selectedTicketId) => set({ selectedTicketId }),
+        // ServiceNow-style record tabs: every ticket you open stays one click away (up to 6).
+        selectTicket: (selectedTicketId) =>
+          set((s) => ({
+            selectedTicketId,
+            openTicketTabs: !selectedTicketId || s.openTicketTabs.includes(selectedTicketId) ? s.openTicketTabs : [...s.openTicketTabs, selectedTicketId].slice(-6),
+          })),
+        closeTicketTab: (ticketId) =>
+          set((s) => {
+            const tabs = s.openTicketTabs.filter((t) => t !== ticketId);
+            return { openTicketTabs: tabs, selectedTicketId: s.selectedTicketId === ticketId ? (tabs.at(-1) ?? null) : s.selectedTicketId };
+          }),
         openInspector: (inspector) => set({ inspector, palette: { ...get().palette, open: false } }),
         closeInspector: () => set({ inspector: null }),
         openPalette: (scope = 'all') => set({ palette: { open: true, scope } }),
         closePalette: () => set((s) => ({ palette: { ...s.palette, open: false } })),
         toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+        setThemePreference: (themePreference) => set({ themePreference }),
         pushToast: (toast) => {
           const id = uid('toast');
           set((s) => ({ toasts: [...s.toasts, { ...toast, id }].slice(-4) }));
@@ -1058,7 +1076,7 @@ export const usePlatformStore = create<PlatformState>()(
           }),
 
         resetDemo: () => {
-          set({ ...initialData(), ...initialUi() });
+          set({ ...initialData(), ...initialUi(), themePreference: get().themePreference }); // keep the user's theme
           get().pushToast({ tone: 'info', title: 'Demo state reset', detail: 'All tickets, assets and SaaS data re-seeded' });
         },
       };
@@ -1080,6 +1098,7 @@ export const usePlatformStore = create<PlatformState>()(
         baseline: s.baseline,
         reclaimedMonthlySavings: s.reclaimedMonthlySavings,
         sidebarCollapsed: s.sidebarCollapsed,
+        themePreference: s.themePreference,
         closedTickets: s.closedTickets,
         problems: s.problems,
         changeDetails: s.changeDetails,

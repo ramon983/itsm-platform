@@ -12,7 +12,7 @@ import type { TelemetryEvent } from '@/types/platform';
 // ------------------------------------------------------------------ telemetry feed
 
 const SEVERITY_STYLE: Record<TelemetryEvent['severity'], string> = {
-  critical: 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]',
+  critical: 'bg-rose-500',
   high: 'bg-orange-400',
   medium: 'bg-amber-300',
   info: 'bg-sky-400',

@@ -50,8 +50,8 @@ export function CopilotPanel({ subject, kind, onInsertDraft, onInsertSteps, onRe
   return (
     <section aria-label="AI Copilot" className="space-y-3 text-sm">
       <header className="flex items-center gap-2">
-        <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-sky-500 shadow-[0_0_16px_rgba(99,102,241,0.35)]">
-          <Sparkles className="size-3.5 text-white" />
+        <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-indigo-500 to-sky-500">
+          <Sparkles className="size-3.5 text-onaccent" />
         </span>
         <div className="leading-tight">
           <h3 className="text-sm font-semibold tracking-tight">AI Copilot</h3>
@@ -101,7 +101,7 @@ export function CopilotPanel({ subject, kind, onInsertDraft, onInsertSteps, onRe
         <div className="rounded-xl border border-indigo-500/25 bg-indigo-500/[0.06] p-3">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-indigo-300"><Zap className="size-3.5" />Remediation macro · needs your approval</p>
           <p className="mt-1 text-sm text-slate-100">{subject.recommendedMacro.label}</p>
-          <pre className="mt-1.5 overflow-x-auto rounded-md bg-black/40 px-2 py-1 font-mono text-[10px] text-slate-400">$ {subject.recommendedMacro.command}</pre>
+          <pre className="mt-1.5 overflow-x-auto rounded-md bg-code px-2 py-1 font-mono text-[10px] text-slate-400">$ {subject.recommendedMacro.command}</pre>
           <Button size="sm" variant="primary" className="mt-2" onClick={onExecuteMacro} disabled={disabled}>
             <Zap className="size-3.5" />Approve & run <Kbd>E</Kbd>
           </Button>

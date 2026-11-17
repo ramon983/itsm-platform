@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './theme.css';
 
 @theme inline {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -6,7 +7,7 @@
 }
 
 html {
-  color-scheme: dark;
+  background: var(--az-canvas);
 }
 
 body {
@@ -16,7 +17,7 @@ body {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-color: color-mix(in oklab, var(--color-slate-500) 45%, transparent) transparent;
 }
 
 @layer components {

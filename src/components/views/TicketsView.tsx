@@ -34,7 +34,8 @@ import { draftReply, ticketSubject } from '@/lib/copilot';
 import { ALLOWED_TRANSITIONS, STATUS_LABEL, SWARM_SQUADS, TICKET_STATUSES } from '@/lib/rules';
 import { formatSla, liveSlaSeconds } from '@/lib/sla';
 import { usePlatformStore } from '@/store/usePlatformStore';
-import type { SwarmSquad, Ticket, TicketStatus } from '@/types/platform';
+import { CANNED_REPLIES } from '@/data/cannedReplies';
+import type { KbArticle, SwarmSquad, Ticket, TicketStatus } from '@/types/platform';
 
 const QUEUE_TYPES: Ticket['type'][] = ['INCIDENT', 'SERVICE_REQUEST'];
 type QueueFilter = 'all' | 'p1' | 'waiting' | 'mine';
@@ -105,6 +106,14 @@ function Inbox3Col() {
   }, [tickets, anchors, filter, squad, query, now]);
 
   const selected = tickets.find((t) => t.id === selectedId && QUEUE_TYPES.includes(t.type)) ?? queue[0];
+  // Jira-style queue counts: see how much is in each view before switching.
+  const scoped = tickets.filter((t) => QUEUE_TYPES.includes(t.type) && t.status !== 'RESOLVED_KB_LINKED' && (squad === 'all' || t.swarmSquad === squad));
+  const counts: Record<QueueFilter, number> = {
+    all: scoped.length,
+    p1: scoped.filter((t) => t.priority === 'P1').length,
+    waiting: scoped.filter((t) => t.slaPaused).length,
+    mine: scoped.filter((t) => t.activeSwarmAgents.includes(CURRENT_AGENT)).length,
+  };
 
   return (
     <div className={clsx('grid min-h-0 flex-1 lg:grid-rows-[minmax(0,1fr)_auto]', aiOn ? 'lg:grid-cols-[minmax(260px,24%)_1fr_minmax(320px,30%)]' : 'lg:grid-cols-[minmax(260px,26%)_1fr]')}>
@@ -121,7 +130,7 @@ function Inbox3Col() {
                 aria-pressed={filter === k}
                 className={clsx('rounded-full border px-2 py-0.5 text-[11px] transition', filter === k ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-200' : 'border-white/[0.08] text-slate-400 hover:text-slate-200')}
               >
-                {label}
+                {label} <span className="font-mono opacity-70">{counts[k]}</span>
               </button>
             ))}
           </div>
@@ -137,7 +146,10 @@ function Inbox3Col() {
               <li key={t.id}>
                 <button
                   type="button"
-                  onClick={() => selectTicket(t.id)}
+                  onClick={() => {
+                    if (selected && selected.id !== t.id) selectTicket(selected.id); // keep the ticket you were on as a tab
+                    selectTicket(t.id);
+                  }}
                   aria-current={selected?.id === t.id}
                   className={clsx(
                     'mb-1 w-full rounded-lg border p-2.5 text-left transition',
@@ -195,6 +207,23 @@ function Workspace({ ticket }: { ticket: Ticket }) {
   const canReply = ticket.channel !== 'SIEM Webhook';
   const [mode, setMode] = useState<'reply' | 'internal'>(canReply ? 'reply' : 'internal');
   const [text, setText] = useState('');
+  const [timelineFilter, setTimelineFilter] = useState<TimelineFilterKey>('all');
+  const [slashIndex, setSlashIndex] = useState(0);
+  const kbArticles = usePlatformStore((s) => s.kbArticles);
+  const slash = text.match(/(?:^|\s)\/([\w-]*)$/);
+  const first = ticket.requesterName.split(' ')[0] ?? 'there';
+  const slashItems = slash ? buildSlashItems(slash[1]!.toLowerCase(), kbArticles, ticket, flags.ai_agents) : [];
+  const applySlash = (item: SlashItem) => {
+    const before = text.slice(0, text.length - slash![0].trimStart().length);
+    if (item.kind === 'macro') {
+      executeMacro(ticket.id);
+      setText(before.trimEnd());
+    } else {
+      setText(`${before}${item.insert.replaceAll('{first}', first)}`);
+    }
+    setNative(null);
+    setSlashIndex(0);
+  };
   const [native, setNative] = useState<{ text: string; lang: string; source: string } | null>(null);
   const [jira, setJira] = useState('');
 
@@ -246,6 +275,7 @@ function Workspace({ ticket }: { ticket: Ticket }) {
   return (
     <>
       <section className="flex min-h-0 flex-col border-r border-white/[0.08]" aria-label={`Ticket ${ticket.id}`}>
+        <TicketTabs activeId={ticket.id} />
         <header className="space-y-3 border-b border-white/[0.08] p-4">
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
             <span className="font-mono font-semibold text-slate-200">{ticket.id}</span>
@@ -298,7 +328,21 @@ function Workspace({ ticket }: { ticket: Ticket }) {
               </Button>
             </div>
           )}
-          <TicketTimeline messages={ticket.messages} showTranslation={flags.ai_agents && showTranslation} />
+          <div className="mb-3 flex flex-wrap gap-1" role="tablist" aria-label="Timeline filter">
+            {TIMELINE_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                role="tab"
+                aria-selected={timelineFilter === f.key}
+                onClick={() => setTimelineFilter(f.key)}
+                className={clsx('rounded-full border px-2.5 py-0.5 text-[11px] transition', timelineFilter === f.key ? 'border-indigo-500/40 bg-indigo-500/15 text-indigo-200' : 'border-white/[0.08] text-slate-400 hover:text-slate-200')}
+              >
+                {f.label} <span className="font-mono opacity-70">{ticket.messages.filter(f.match).length}</span>
+              </button>
+            ))}
+          </div>
+          <TicketTimeline messages={ticket.messages.filter(TIMELINE_FILTERS.find((f) => f.key === timelineFilter)!.match)} showTranslation={flags.ai_agents && showTranslation} />
         </div>
 
         {/* composer */}
@@ -326,6 +370,27 @@ function Workspace({ ticket }: { ticket: Ticket }) {
               </span>
             )}
           </div>
+          {slashItems.length > 0 && (
+            <ul className="mb-2 max-h-52 overflow-y-auto rounded-xl border border-white/[0.1] bg-raised p-1 shadow-card" role="listbox" aria-label="Slash commands">
+              {slashItems.map((item, i) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={i === Math.min(slashIndex, slashItems.length - 1)}
+                    onMouseEnter={() => setSlashIndex(i)}
+                    onMouseDown={(e) => { e.preventDefault(); applySlash(item); }}
+                    className={clsx('flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs', i === Math.min(slashIndex, slashItems.length - 1) ? 'bg-white/[0.07] text-slate-100' : 'text-slate-300')}
+                  >
+                    <span className={clsx('rounded px-1.5 py-0.5 font-mono text-[10px]', item.kind === 'macro' ? 'bg-indigo-500/15 text-indigo-300' : item.kind === 'kb' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/[0.06] text-slate-400')}>
+                      {item.kind === 'macro' ? 'MACRO' : item.kind === 'kb' ? item.id : 'REPLY'}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className={clsx('grid gap-2', mode === 'reply' && foreign && 'md:grid-cols-2')}>
             <textarea
               aria-label="Composer"
@@ -333,12 +398,24 @@ function Workspace({ ticket }: { ticket: Ticket }) {
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
+                if (slashItems.length) {
+                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setSlashIndex((i) => (i + (e.key === 'ArrowDown' ? 1 : slashItems.length - 1)) % slashItems.length);
+                    return;
+                  }
+                  if (e.key === 'Enter' || e.key === 'Tab') {
+                    e.preventDefault();
+                    applySlash(slashItems[Math.min(slashIndex, slashItems.length - 1)]!);
+                    return;
+                  }
+                }
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
                   send();
                 }
               }}
-              placeholder={mode === 'internal' ? 'Note for the swarm — the requester never sees this…' : 'Write in English…'}
+              placeholder={mode === 'internal' ? 'Note for the swarm — the requester never sees this…  ( / for saved replies & KB )' : 'Write in English…  ( / for saved replies, KB steps & macros )'}
               className={clsx(inputClass, 'resize-none', mode === 'internal' && 'border-amber-400/20 bg-amber-400/[0.04]')}
             />
             {mode === 'reply' && foreign && (
@@ -439,7 +516,7 @@ function ContextStrip({ ticket, asset, saasName, grants, onAsset, onSaas, onJit,
 }) {
   const now = useNow();
   return (
-    <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.08] bg-[#0b101b] px-4 py-2 text-xs lg:col-[2/-1]">
+    <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.08] bg-sidebar px-4 py-2 text-xs lg:col-[2/-1]">
       <span className="text-slate-500">Context</span>
       {asset && <button type="button" onClick={onAsset} className="az-chip"><Laptop className="size-3.5 text-slate-400" /><span className="font-mono">{asset.id}</span></button>}
       {saasName && <button type="button" onClick={onSaas} className="az-chip"><Cloud className="size-3.5 text-slate-400" />{saasName}</button>}
@@ -467,4 +544,60 @@ function ContextStrip({ ticket, asset, saasName, grants, onAsset, onSaas, onJit,
       </form>
     </div>
   );
+}
+
+// ------------------------------------------------------------------ record tabs (ServiceNow-style)
+
+function TicketTabs({ activeId }: { activeId: string }) {
+  const tabs = usePlatformStore((s) => s.openTicketTabs);
+  const tickets = usePlatformStore((s) => s.tickets);
+  const selectTicket = usePlatformStore((s) => s.selectTicket);
+  const closeTicketTab = usePlatformStore((s) => s.closeTicketTab);
+  const open = tabs.map((id) => tickets.find((t) => t.id === id)).filter((t): t is Ticket => !!t);
+  if (open.length < 2) return null;
+  return (
+    <div className="flex gap-1 overflow-x-auto border-b border-white/[0.08] bg-sunken px-2 pt-1.5" role="tablist" aria-label="Open tickets">
+      {open.map((t) => (
+        <div
+          key={t.id}
+          className={clsx('group flex max-w-[200px] shrink-0 items-center gap-1.5 rounded-t-lg border border-b-0 px-2.5 py-1.5 text-xs', t.id === activeId ? 'border-white/[0.1] bg-canvas text-slate-100' : 'border-transparent text-slate-400 hover:text-slate-200')}
+        >
+          <button type="button" role="tab" aria-selected={t.id === activeId} onClick={() => selectTicket(t.id)} className="flex min-w-0 items-center gap-1.5">
+            <span className="whitespace-nowrap font-mono">{t.id}</span>
+            <span className="truncate">{t.title}</span>
+          </button>
+          <button type="button" onClick={() => closeTicketTab(t.id)} aria-label={`Close ${t.id}`} className="rounded p-0.5 text-slate-500 opacity-60 hover:bg-white/[0.08] hover:opacity-100">×</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ timeline filter (review AI activity separately)
+
+type TimelineFilterKey = 'all' | 'conversation' | 'ai' | 'internal';
+const TIMELINE_FILTERS: { key: TimelineFilterKey; label: string; match: (m: Ticket['messages'][number]) => boolean }[] = [
+  { key: 'all', label: 'All', match: () => true },
+  { key: 'conversation', label: 'Conversation', match: (m) => m.role === 'end_user' || (m.role === 'agent' && m.metadata?.visibility !== 'internal') },
+  { key: 'ai', label: 'AI & automation', match: (m) => m.role === 'ai_system' || m.role === 'diagnostic_telemetry' },
+  { key: 'internal', label: 'Internal & handoffs', match: (m) => m.role === 'handoff_audit' || m.metadata?.visibility === 'internal' },
+];
+
+// ------------------------------------------------------------------ "/" menu (Zendesk-style macros)
+
+type SlashItem = { id: string; kind: 'reply' | 'kb' | 'macro'; label: string; insert: string };
+
+function buildSlashItems(q: string, kbArticles: KbArticle[], ticket: Ticket, aiOn: boolean): SlashItem[] {
+  const matches = (s: string) => !q || s.toLowerCase().includes(q);
+  const items: SlashItem[] = [
+    ...(aiOn && ticket.recommendedMacro && ticket.status !== 'RESOLVED_KB_LINKED' && matches(`macro run ${ticket.recommendedMacro.label}`)
+      ? [{ id: 'macro', kind: 'macro' as const, label: `Run: ${ticket.recommendedMacro.label} (you approve by choosing this)`, insert: '' }]
+      : []),
+    ...CANNED_REPLIES.filter((r) => matches(`${r.id} ${r.label}`)).map((r) => ({ id: r.id, kind: 'reply' as const, label: r.label, insert: r.body })),
+    ...kbArticles
+      .filter((k) => matches(`${k.id} ${k.title}`))
+      .slice(0, 5)
+      .map((k) => ({ id: k.id, kind: 'kb' as const, label: k.title, insert: `Here are the verified steps from ${k.id}:\n${k.steps.map((st, i) => `${i + 1}. ${st}`).join('\n')}` })),
+  ];
+  return items.slice(0, 9);
 }

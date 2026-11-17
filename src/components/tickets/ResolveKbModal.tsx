@@ -64,7 +64,7 @@ function ResolveForm({ ticket, onClose }: { ticket: Ticket; onClose: () => void 
             onClick={() => setMode(m)}
             className={clsx(
               'flex items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition',
-              mode === m ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200',
+              mode === m ? 'bg-indigo-600 text-onaccent' : 'text-slate-400 hover:text-slate-200',
             )}
           >
             {m === 'link' ? <BookOpen className="size-3.5" /> : <Plus className="size-3.5" />}
