@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 };
 
 // Applies the saved theme before first paint (no flash of the wrong theme).
-const THEME_BOOT = `try{var p=(JSON.parse(localStorage.getItem('adminzero-platform-v3')||'{}').state||{}).themePreference||'system';var t=p!=='system'?p:matchMedia('(prefers-contrast: more)').matches?'contrast':matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t}catch(e){}`;
+const THEME_BOOT = `try{var s=(JSON.parse(localStorage.getItem('adminzero-platform-v3')||'{}').state||{}),p=s.themePreference||'system';var t=(s.highContrast||p==='contrast'||(p==='system'&&matchMedia('(prefers-contrast: more)').matches))?'contrast':p==='light'||p==='dark'?p:matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t}catch(e){}`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

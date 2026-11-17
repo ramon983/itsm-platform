@@ -20,7 +20,9 @@ for (const theme of (process.env.THEMES ?? 'dark,light,contrast').split(',')) {
     const send = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     await sleep(2500);
-    await send('Runtime.evaluate', { expression: `localStorage.setItem('x','1');(()=>{const r=document.querySelector('[role=radio][aria-label=${theme === 'contrast' ? '"High contrast"' : theme === 'light' ? 'Light' : 'Dark'}]'); r && r.click();})()` });
+    const pick = theme === 'light' ? 'Light' : 'Dark';
+    const hc = theme === 'contrast' ? `document.querySelector('button[aria-label="High contrast"]').click();` : '';
+    await send('Runtime.evaluate', { expression: `document.querySelector('[role=radio][aria-label=${pick}]')?.click(); ${hc}` });
     await sleep(600);
     await send('Runtime.evaluate', { expression: axeSrc });
     const r = await send('Runtime.evaluate', { awaitPromise: true, returnByValue: true, expression: `axe.run(document, { runOnly: { type: 'tag', values: ${JSON.stringify(tags)} }, resultTypes: ['violations'] }).then(r => r.violations.map(v => ({ id: v.id, impact: v.impact, n: v.nodes.length, sample: v.nodes.slice(0,3).map(n => (n.any[0]?.message || n.failureSummary || '').slice(0,160) + ' @ ' + n.target.join(' ').slice(0,90)) })))` });

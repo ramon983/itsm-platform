@@ -69,7 +69,8 @@ export interface BoardFilter {
   priority: 'ALL' | 'P1';
   query: string;
 }
-export type ThemePreference = 'system' | 'light' | 'dark' | 'contrast';
+/** Dark mode is opt-in: Automatic (follow the OS, the default), Light or Dark. High contrast is a separate accessibility switch. */
+export type ThemePreference = 'system' | 'light' | 'dark';
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 interface UiState {
@@ -80,6 +81,7 @@ interface UiState {
   palette: { open: boolean; scope: PaletteScope };
   sidebarCollapsed: boolean;
   themePreference: ThemePreference;
+  highContrast: boolean;
   toasts: Toast[];
   jitModal: { open: boolean; vaultId?: string; ticketId?: string };
   boardFilter: BoardFilter;
@@ -102,6 +104,7 @@ export interface PlatformState extends SeedState, UiState {
   closePalette: () => void;
   toggleSidebar: () => void;
   setThemePreference: (pref: ThemePreference) => void;
+  setHighContrast: (on: boolean) => void;
   pushToast: (toast: Omit<Toast, 'id'>) => void;
   dismissToast: (id: string) => void;
   openJitModal: (opts?: { vaultId?: string; ticketId?: string }) => void;
@@ -218,6 +221,7 @@ const initialUi = (): UiState => ({
   palette: { open: false, scope: 'all' },
   sidebarCollapsed: false,
   themePreference: 'system',
+  highContrast: false,
   toasts: [],
   jitModal: { open: false },
   boardFilter: { status: 'ALL', priority: 'ALL', query: '' },
@@ -309,6 +313,7 @@ export const usePlatformStore = create<PlatformState>()(
         closePalette: () => set((s) => ({ palette: { ...s.palette, open: false } })),
         toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
         setThemePreference: (themePreference) => set({ themePreference }),
+        setHighContrast: (highContrast) => set({ highContrast }),
         pushToast: (toast) => {
           const id = uid('toast');
           set((s) => ({ toasts: [...s.toasts, { ...toast, id }].slice(-4) }));
@@ -1176,14 +1181,20 @@ export const usePlatformStore = create<PlatformState>()(
           }),
 
         resetDemo: () => {
-          set({ ...initialData(), ...initialUi(), themePreference: get().themePreference }); // keep the user's theme
+          set({ ...initialData(), ...initialUi(), themePreference: get().themePreference, highContrast: get().highContrast }); // keep the user's theme
           get().pushToast({ tone: 'info', title: 'Demo state reset', detail: 'All tickets, assets and SaaS data re-seeded' });
         },
       };
     },
     {
       name: 'adminzero-platform-v3',
-      version: 1,
+      version: 2,
+      // v2: "High contrast" moved from a theme choice to its own switch.
+      migrate: (persisted, version) => {
+        const st = (persisted ?? {}) as Record<string, unknown>;
+        if (version < 2 && st.themePreference === 'contrast') return { ...st, themePreference: 'system', highContrast: true };
+        return st;
+      },
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         tickets: s.tickets,
@@ -1202,6 +1213,7 @@ export const usePlatformStore = create<PlatformState>()(
         reclaimedMonthlySavings: s.reclaimedMonthlySavings,
         sidebarCollapsed: s.sidebarCollapsed,
         themePreference: s.themePreference,
+        highContrast: s.highContrast,
         closedTickets: s.closedTickets,
         problems: s.problems,
         changeDetails: s.changeDetails,

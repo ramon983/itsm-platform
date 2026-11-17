@@ -16,9 +16,14 @@ const goTickets = async (user: ReturnType<typeof userEvent.setup>) =>
   user.click(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('button', { name: /^Tickets/ }));
 
 describe('look & feel', () => {
-  it('light / dark / system theme applies to the whole app and survives a demo reset', async () => {
+  it('dark mode is optional: Automatic by default, Light or Dark by choice, plus a separate High contrast switch', async () => {
     const user = userEvent.setup();
     render(<Home />);
+    expect(screen.getByRole('radio', { name: 'Automatic' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getAllByRole('radio').filter((r) => r.closest('[aria-label="Appearance"]')).map((r) => r.getAttribute('aria-label'))).toEqual(['Automatic', 'Light', 'Dark']);
+    await user.click(screen.getByRole('button', { name: 'High contrast' }));
+    expect(document.documentElement.dataset.theme).toBe('contrast');
+    await user.click(screen.getByRole('button', { name: 'High contrast' }));
     await user.click(screen.getByRole('radio', { name: 'Light' }));
     expect(document.documentElement.dataset.theme).toBe('light');
     await user.click(screen.getByRole('radio', { name: 'Dark' }));

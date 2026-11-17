@@ -22,8 +22,9 @@ All work happens on the `develop` branch. Pages deploys from `develop`.
 ## 2. Design system (research-driven: what IT techs & admins say they want)
 Revised after reviewing what daily users praise and complain about in ServiceNow, Freshservice, Zendesk,
 Jira Service Management and Torii (G2, Capterra, vendor communities) plus accessibility guidance for ops dashboards.
-- **Light, Dark and System themes, applied everywhere.** ServiceNow admins complain dark mode only covers part of the
-  product; light text on dark causes halation in bright offices. Users pick per account (top bar); System follows the OS.
+- **Dark mode is optional: Automatic (default, follows the OS), Light or Dark, applied everywhere.** High contrast is a
+  separate on/off switch next to it (AAA). ServiceNow admins complain dark mode only covers part of the
+  product; light text on dark causes halation in bright offices. Users pick per account (top bar).
 - **Calm, neutral palette.** Neutral grey surfaces (Tailwind gray), never pure black backgrounds or pure white text.
   One enterprise-blue brand accent (the `indigo-*` classes are remapped to blue in `src/app/theme.css`). No neon glows,
   no decorative blur blobs, no glassmorphism on cards (it also broke fixed positioning).
