@@ -30,6 +30,7 @@ import { CURRENT_AGENT } from '@/data/seed';
 import { useApiHealth } from '@/hooks/useApiHealth';
 import { useNow } from '@/hooks/useNow';
 import { ACTION_LABEL, FIELD_LABEL, FIELD_OPTIONS, TRIGGER_LABEL } from '@/lib/automation';
+import { COUNTRY_NAMES, flag } from '@/lib/holidays';
 import { timeAgo } from '@/lib/metrics';
 import { SWARM_SQUADS, TICKET_STATUSES } from '@/lib/rules';
 import { MAX_CUSTOM_FIELDS, MODULE_LABEL, usePlatformStore } from '@/store/usePlatformStore';
@@ -175,7 +176,7 @@ function PeopleTab() {
   const updateUser = usePlatformStore((s) => s.updateUser);
   const addUser = usePlatformStore((s) => s.addUser);
   const tickets = usePlatformStore((s) => s.tickets);
-  const [form, setForm] = useState({ name: '', email: '', role: 'Agent' as Role, squad: 'Endpoint & Mac' as SwarmSquad });
+  const [form, setForm] = useState({ name: '', email: '', role: 'Agent' as Role, squad: 'Endpoint & Mac' as SwarmSquad, country: 'US', timezone: 'America/New_York' });
   const load = (name: string) => tickets.filter((t) => t.status !== 'RESOLVED_KB_LINKED' && t.activeSwarmAgents.includes(name)).length;
 
   return (
@@ -183,7 +184,7 @@ function PeopleTab() {
       <Card className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-white/[0.06] text-left text-[11px] uppercase tracking-wider text-slate-500">
-            <tr><th className="px-3 py-2 font-medium">Person</th><th className="px-3 py-2 font-medium">Role</th><th className="px-3 py-2 font-medium">Squad</th><th className="px-3 py-2 font-medium">Swarming on</th><th className="px-3 py-2 font-medium">Active</th></tr>
+            <tr><th className="px-3 py-2 font-medium">Person</th><th className="px-3 py-2 font-medium">Role</th><th className="px-3 py-2 font-medium">Squad</th><th className="px-3 py-2 font-medium">Country</th><th className="px-3 py-2 font-medium">Swarming on</th><th className="px-3 py-2 font-medium">Active</th></tr>
           </thead>
           <tbody>
             {users.map((u) => (
@@ -199,6 +200,11 @@ function PeopleTab() {
                     {SWARM_SQUADS.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}
                   </select>
                 </td>
+                <td className="px-3 py-2">
+                  <select aria-label={`Country for ${u.name}`} value={u.country} onChange={(e) => updateUser(u.email, { country: e.target.value })} className={clsx(inputClass, 'h-8 py-1 text-xs')}>
+                    {Object.entries(COUNTRY_NAMES).map(([cc, name]) => <option key={cc} value={cc} className="bg-slate-900">{flag(cc)} {name}</option>)}
+                  </select>
+                </td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-300">{load(u.name)} tickets</td>
                 <td className="px-3 py-2"><Toggle checked={u.active} onChange={() => updateUser(u.email, { active: !u.active })} label={`${u.name} active`} /></td>
               </tr>
@@ -209,7 +215,7 @@ function PeopleTab() {
       <Card className="p-4">
         <p className="mb-3 text-sm font-medium">Add a teammate</p>
         <form
-          className="grid gap-3 sm:grid-cols-[1fr_1fr_140px_180px_auto] sm:items-end"
+          className="grid gap-3 sm:grid-cols-[1fr_1fr_120px_170px_150px_auto] sm:items-end"
           onSubmit={(e) => {
             e.preventDefault();
             if (form.name.trim().length < 2) return;
@@ -223,6 +229,9 @@ function PeopleTab() {
           </Field>
           <Field label="Squad">
             <select className={inputClass} value={form.squad} onChange={(e) => setForm({ ...form, squad: e.target.value as SwarmSquad })}>{SWARM_SQUADS.map((s) => <option key={s} className="bg-slate-900">{s}</option>)}</select>
+          </Field>
+          <Field label="Country (holidays)">
+            <select className={inputClass} value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}>{Object.entries(COUNTRY_NAMES).map(([cc, name]) => <option key={cc} value={cc} className="bg-slate-900">{flag(cc)} {name}</option>)}</select>
           </Field>
           <Button type="submit" variant="primary" disabled={form.name.trim().length < 2 || !form.email.includes('@')}><Plus className="size-4" />Add</Button>
         </form>

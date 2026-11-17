@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AppShell } from '@/components/shell/AppShell';
-import { DashboardView } from '@/components/views/DashboardView';
+import { TicketsView } from '@/components/views/TicketsView';
 import { EndUserPortalView } from '@/components/views/EndUserPortalView';
 import { usePlatformStore } from '@/store/usePlatformStore';
 
@@ -45,7 +45,7 @@ describe('EndUserPortalView', () => {
     expect(created.messages[0]).toMatchObject({ role: 'end_user', originalLang: 'fr', translatedText: expect.stringContaining('cracked') });
     expect(await screen.findByText(/Votre ticket SR-2089/)).toBeInTheDocument();
 
-    render(<AppShell><DashboardView /></AppShell>);
+    render(<AppShell><TicketsView /></AppShell>);
     expect(screen.getAllByText('SR-2089').length).toBeGreaterThan(0);
   });
 

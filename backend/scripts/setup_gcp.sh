@@ -37,15 +37,26 @@ for role in roles/run.admin roles/artifactregistry.writer; do
 done
 gcloud iam service-accounts add-iam-policy-binding "$RUNTIME_SA" --member "serviceAccount:${DEPLOY_SA}" --role roles/iam.serviceAccountUser >/dev/null
 
-echo "› Secrets (values are read from your terminal, never written to disk)"
+echo "› Secrets"
+# AUTO_SECRETS=1: generate random values for SIEM_WEBHOOK_SECRET / VAULT_KMS_KEY straight into Secret Manager
+# (never printed or written to disk). Secrets that must come from you (ANTHROPIC_API_KEY, DATABASE_URL) are
+# prompted for in an interactive terminal, and listed as follow-ups otherwise.
+GENERATED=(SIEM_WEBHOOK_SECRET VAULT_KMS_KEY)
+PENDING=()
 for name in "${SECRETS[@]}"; do
   if ! gcloud secrets describe "$name" >/dev/null 2>&1; then
-    read -r -s -p "  Value for ${name} (leave empty to skip): " value; echo
-    if [[ -n "$value" ]]; then
-      printf '%s' "$value" | gcloud secrets create "$name" --replication-policy=automatic --data-file=- >/dev/null
+    if [[ "${AUTO_SECRETS:-0}" == "1" && " ${GENERATED[*]} " == *" ${name} "* ]]; then
+      openssl rand -base64 48 | tr -d '\n' | gcloud secrets create "$name" --replication-policy=automatic --data-file=- >/dev/null
+      echo "  generated ${name} (random, stored only in Secret Manager)"
+    elif [[ -t 0 ]]; then
+      read -r -s -p "  Value for ${name} (leave empty to skip): " value; echo
+      if [[ -n "$value" ]]; then
+        printf '%s' "$value" | gcloud secrets create "$name" --replication-policy=automatic --data-file=- >/dev/null
+      else
+        PENDING+=("$name"); continue
+      fi
     else
-      echo "  skipped ${name} — create it later with: printf '…' | gcloud secrets create ${name} --data-file=-"
-      continue
+      PENDING+=("$name"); continue
     fi
   fi
   gcloud secrets add-iam-policy-binding "$name" --member "serviceAccount:${RUNTIME_SA}" --role roles/secretmanager.secretAccessor >/dev/null
@@ -80,3 +91,10 @@ or run:
 
 After the first deploy, set ADMINZERO_API_URL to the Cloud Run URL so the dashboard calls the live API.
 NEXT
+for name in ${PENDING[@]+"${PENDING[@]}"}; do
+  cat <<ADD
+Still to add — ${name} (type the value at the prompt; it is not echoed or saved in shell history):
+  read -rs V && printf '%s' "\$V" | gcloud secrets create ${name} --replication-policy=automatic --data-file=- && unset V && \\
+  gcloud secrets add-iam-policy-binding ${name} --member serviceAccount:${RUNTIME_SA} --role roles/secretmanager.secretAccessor
+ADD
+done

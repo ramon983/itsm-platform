@@ -14,16 +14,13 @@ import { SWARM_SQUADS } from '@/lib/rules';
 import { liveSlaSeconds } from '@/lib/sla';
 import { usePlatformStore } from '@/store/usePlatformStore';
 
-export function DashboardView() {
-  const now = useNow();
-  const hour = new Date(now).getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+export function ReportsView() {
   const flags = usePlatformStore((s) => s.flags);
   return (
     <div className="mx-auto max-w-[1500px] space-y-5 p-5">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{greeting}, {CURRENT_AGENT.split(' ')[0]}</h1>
-        <p className="mt-0.5 text-sm text-slate-400">Here’s what needs a human today. The AI has the rest.</p>
+        <h1 className="text-xl font-semibold tracking-tight">Reports</h1>
+        <p className="mt-0.5 text-sm text-slate-400">Service performance, team load, the AI + human split and live telemetry.</p>
       </div>
       <KpiStrip />
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">

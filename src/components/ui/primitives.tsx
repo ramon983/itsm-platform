@@ -3,6 +3,7 @@
 import clsx from 'clsx';
 import { CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { useNow } from '@/hooks/useNow';
 import { STATUS_LABEL } from '@/lib/rules';
@@ -146,13 +147,15 @@ function useEscape(onClose: () => void, active: boolean, topLayer = false) {
 export function Drawer({ open, onClose, children, label }: { open: boolean; onClose: () => void; children: ReactNode; label: string }) {
   useEscape(onClose, open);
   if (!open) return null;
-  return (
+  // Portalled to <body>: an ancestor with backdrop-filter would otherwise trap `position: fixed` inside it.
+  return createPortal(
     <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label={label}>
       <button type="button" aria-label="Close drawer" className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
       <aside className="az-slide-in absolute inset-y-0 right-0 flex w-full max-w-[540px] flex-col border-l border-white/[0.08] bg-[#0d1220] shadow-2xl">
         {children}
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -177,8 +180,8 @@ export function Modal({
     if (open) ref.current?.querySelector<HTMLElement>('input, textarea, select, button[data-autofocus]')?.focus();
   }, [open]);
   if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4" role="dialog" aria-modal="true" aria-label={title}>
+  return createPortal(
+    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4" role="dialog" aria-modal="true" aria-label={title}>
       <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div ref={ref} className={clsx('az-pop-in relative w-full rounded-2xl border border-white/[0.1] bg-[#0f1424] p-5 shadow-2xl', width)}>
         <div className="mb-4 flex items-start justify-between gap-4">
@@ -192,7 +195,8 @@ export function Modal({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

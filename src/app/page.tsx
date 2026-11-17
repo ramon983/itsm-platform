@@ -5,7 +5,8 @@ import { useEffect } from 'react';
 import { AppShell, VIEW_MODULE } from '@/components/shell/AppShell';
 import { AdminView } from '@/components/views/AdminView';
 import { ChangesView } from '@/components/views/ChangesView';
-import { DashboardView } from '@/components/views/DashboardView';
+import { HomeView } from '@/components/views/HomeView';
+import { ReportsView } from '@/components/views/ReportsView';
 import { EndUserPortalView } from '@/components/views/EndUserPortalView';
 import { KnowledgeView } from '@/components/views/KnowledgeView';
 import { AssetsView, SaasView, VaultView } from '@/components/views/ModuleViews';
@@ -15,7 +16,8 @@ import { useHydrated } from '@/hooks/useNow';
 import { usePlatformStore, type ViewKey } from '@/store/usePlatformStore';
 
 const VIEWS: Record<ViewKey, () => React.ReactNode> = {
-  dashboard: () => <DashboardView />,
+  dashboard: () => <HomeView />,
+  reports: () => <ReportsView />,
   tickets: () => <TicketsView />,
   problems: () => <ProblemsView />,
   changes: () => <ChangesView />,

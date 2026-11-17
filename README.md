@@ -9,7 +9,8 @@ AdminZero is built as a platform: every module can be turned on and off in **Adm
 
 | Section | What it does |
 |---|---|
-| **Home** | What needs a human now: P1s, SLA risk and urgent client impact. Also KPIs, swarm load by squad, the AI + human split, AI insights, the Arcade leaderboard and SIEM telemetry. |
+| **Home** | Four cards: Last 7 days, On call now (weekly rotation with automatic cover), Needs a human, and SLA health. Below them: **Tool status** (live status for about 35 tools, plus link-only entries for vendors without a public API; click a tool to see what's down), **Celebrations** (this week's birthdays and work anniversaries, and the next 30 days), **Team availability** (a 14-day time-off calendar with .ics import and export for Google and Outlook), **Holidays** (from each agent's country) and the **Team & Pets Spotlight**. |
+| **Reports** | KPIs, needs-a-human, squad load, the AI + human split, AI insights, the Arcade leaderboard and SIEM telemetry. |
 | **Tickets** | A unified omnichannel inbox: a queue filtered by All / P1 / Waiting / My swarms / squad, one timeline across channels, and a reply or internal-note composer. You can switch to a swarm board. |
 | **Problems** | Root causes behind repeat incidents, linked to open and closed tickets. A root cause is required before Known error, and the workaround can be published to Knowledge. |
 | **Changes** | Transparent CAB risk scoring: low-risk changes skip CAB. Includes a 7-day schedule, Jira release links and approve/reject. You can't approve your own change. |

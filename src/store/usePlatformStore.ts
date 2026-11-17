@@ -29,6 +29,9 @@ import type { SiemApiResponse } from '@/lib/api';
 import { INTAKE_AGENT_NAME, LANGUAGE_NAMES } from '@/lib/intake';
 import { findDeflectionArticle } from '@/lib/patterns';
 import type {
+  SpotlightEntry,
+  TimeOff,
+  Wish,
   AiSettings,
   AuditEntry,
   AutomationRule,
@@ -56,7 +59,7 @@ import type {
   Toast,
 } from '@/types/platform';
 
-export type ViewKey = 'dashboard' | 'tickets' | 'problems' | 'changes' | 'knowledge' | 'portal' | 'saas' | 'assets' | 'vault' | 'admin';
+export type ViewKey = 'dashboard' | 'reports' | 'tickets' | 'problems' | 'changes' | 'knowledge' | 'portal' | 'saas' | 'assets' | 'vault' | 'admin';
 export type PaletteScope = 'all' | 'tickets' | 'assets' | 'saas' | 'vault' | 'macros';
 export interface BoardFilter {
   status: TicketStatus | 'ALL' | 'WAITING';
@@ -141,7 +144,7 @@ export interface PlatformState extends SeedState, UiState {
 
   // admin
   addUser: (user: PlatformUser) => ActionResult;
-  updateUser: (email: string, patch: Partial<Pick<PlatformUser, 'role' | 'squad' | 'active'>>) => ActionResult;
+  updateUser: (email: string, patch: Partial<Pick<PlatformUser, 'role' | 'squad' | 'active' | 'country'>>) => ActionResult;
   updateSlaPolicy: (priority: TicketPriority, patch: Partial<Omit<SlaPolicy, 'priority'>>) => ActionResult;
   saveAutomation: (rule: AutomationRule) => ActionResult;
   toggleAutomation: (id: string) => ActionResult;
@@ -151,6 +154,16 @@ export interface PlatformState extends SeedState, UiState {
   removeCustomField: (id: string) => ActionResult;
   toggleIntegration: (key: IntegrationKey) => ActionResult;
   updateAiSettings: (patch: Partial<Omit<AiSettings, 'humanApprovalForMacros'>>) => ActionResult;
+
+  // home
+  setSelectedTools: (ids: string[]) => void;
+  addTimeOff: (entry: Omit<TimeOff, 'id' | 'source'>) => ActionResult;
+  removeTimeOff: (id: string) => ActionResult;
+  importTimeOff: (entries: Omit<TimeOff, 'id'>[]) => number;
+  sendWish: (person: string, occasion: Wish['occasion'], year: number) => ActionResult;
+  addSpotlight: (entry: Omit<SpotlightEntry, 'id' | 'kudos' | 'addedBy'>) => ActionResult;
+  giveKudos: (id: string) => void;
+  removeSpotlight: (id: string) => ActionResult;
 }
 
 export const MAX_CUSTOM_FIELDS = 12;
@@ -957,6 +970,69 @@ export const usePlatformStore = create<PlatformState>()(
           return id;
         },
 
+        // ------------------------------------------------------------ home
+        setSelectedTools: (ids) => {
+          set({ selectedTools: [...new Set(ids)] });
+          get().pushToast({ tone: 'success', title: 'Tool status updated', detail: `Watching ${ids.length} tools` });
+        },
+
+        addTimeOff: (entry) => {
+          if (!get().users.some((u) => u.name === entry.person)) return fail(`${entry.person} is not on the team`);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.start) || !/^\d{4}-\d{2}-\d{2}$/.test(entry.end)) return fail('Pick a start and end date');
+          if (entry.end < entry.start) return fail('End date is before the start date');
+          const overlap = get().timeOff.find((t) => t.person === entry.person && t.start <= entry.end && t.end >= entry.start);
+          if (overlap) return fail(`${entry.person} already has ${overlap.type} from ${overlap.start} to ${overlap.end}`);
+          set((s) => ({ timeOff: [...s.timeOff, { ...entry, id: uid('to'), source: 'manual' }] }));
+          audit('admin', 'Time off added', entry.person, `${entry.type} ${entry.start} → ${entry.end}`);
+          get().pushToast({ tone: 'success', title: 'Time off added', detail: `${entry.person} · ${entry.start === entry.end ? entry.start : `${entry.start} → ${entry.end}`}` });
+          return { ok: true };
+        },
+
+        removeTimeOff: (id) => {
+          const t = get().timeOff.find((x) => x.id === id);
+          if (!t) return fail('Time off not found');
+          set((s) => ({ timeOff: s.timeOff.filter((x) => x.id !== id) }));
+          audit('admin', 'Time off removed', t.person, `${t.type} ${t.start} → ${t.end}`);
+          get().pushToast({ tone: 'info', title: 'Time off removed', detail: t.person });
+          return { ok: true };
+        },
+
+        importTimeOff: (entries) => {
+          const existing = new Set(get().timeOff.map((t) => `${t.person}|${t.start}|${t.end}`));
+          const fresh = entries.filter((e) => e.end >= e.start && !existing.has(`${e.person}|${e.start}|${e.end}`));
+          set((s) => ({ timeOff: [...s.timeOff, ...fresh.map((e) => ({ ...e, id: uid('to') }))] }));
+          if (fresh.length) audit('admin', 'Calendar imported', 'timeOff', `${fresh.length} entries from .ics`);
+          get().pushToast({ tone: fresh.length ? 'success' : 'info', title: fresh.length ? `Imported ${fresh.length} time-off entries` : 'Nothing new to import' });
+          return fresh.length;
+        },
+
+        sendWish: (person, occasion, year) => {
+          if (get().wishes.some((w) => w.person === person && w.occasion === occasion && w.year === year && w.from === CURRENT_AGENT)) {
+            return fail('You already sent your wishes 🙂');
+          }
+          set((s) => ({ wishes: [...s.wishes, { person, occasion, year, from: CURRENT_AGENT }] }));
+          get().awardXp(5, 'Celebrated a teammate');
+          get().pushToast({ tone: 'success', title: occasion === 'birthday' ? `🎂 Birthday wishes sent to ${person}` : `🎉 Congrats sent to ${person}`, detail: 'Posted to #team-celebrations' });
+          return { ok: true };
+        },
+
+        addSpotlight: (entry) => {
+          if (entry.name.trim().length < 2 || entry.funFact.trim().length < 10) return fail('Add a name and a fun fact (10+ characters)');
+          if (entry.photo && entry.photo.length > 400_000) return fail('Photo is too large — try a smaller image');
+          if (get().spotlight.length >= 24) return fail('The spotlight is full — remove an older entry first');
+          set((s) => ({ spotlight: [{ ...entry, name: entry.name.trim(), funFact: entry.funFact.trim(), id: uid('sp'), kudos: 0, addedBy: CURRENT_AGENT }, ...s.spotlight] }));
+          get().pushToast({ tone: 'success', title: `${entry.emoji} ${entry.name} is in the spotlight!` });
+          return { ok: true };
+        },
+
+        giveKudos: (id) => set((s) => ({ spotlight: s.spotlight.map((e) => (e.id === id ? { ...e, kudos: e.kudos + 1 } : e)) })),
+
+        removeSpotlight: (id) => {
+          if (!get().spotlight.some((e) => e.id === id)) return fail('Entry not found');
+          set((s) => ({ spotlight: s.spotlight.filter((e) => e.id !== id) }));
+          return { ok: true };
+        },
+
         // ------------------------------------------------------------ platform
         toggleFlag: (key) => {
           if (key === 'itsm_core') return fail('ITSM Core is the platform foundation and cannot be disabled');
@@ -988,7 +1064,7 @@ export const usePlatformStore = create<PlatformState>()(
       };
     },
     {
-      name: 'adminzero-platform-v2',
+      name: 'adminzero-platform-v3',
       version: 1,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
@@ -1015,6 +1091,10 @@ export const usePlatformStore = create<PlatformState>()(
         integrations: s.integrations,
         aiSettings: s.aiSettings,
         auditLog: s.auditLog,
+        timeOff: s.timeOff,
+        spotlight: s.spotlight,
+        selectedTools: s.selectedTools,
+        wishes: s.wishes,
       }),
     },
   ),

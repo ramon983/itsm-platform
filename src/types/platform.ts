@@ -308,6 +308,10 @@ export interface PlatformUser {
   role: Role;
   squad: SwarmSquad;
   active: boolean;
+  country: string; // ISO 3166-1 alpha-2 — drives public holidays
+  timezone: string; // IANA, e.g. Europe/Madrid
+  birthday?: string; // MM-DD
+  startDate?: string; // YYYY-MM-DD
 }
 
 export interface SlaPolicy {
@@ -365,4 +369,37 @@ export interface AuditEntry {
   entity: string;
   detail: string;
   category: 'ticket' | 'problem' | 'change' | 'knowledge' | 'vault' | 'saas' | 'asset' | 'admin' | 'ai' | 'automation';
+}
+
+// ---------------------------------------------------------------- Home: people, availability, tools, spotlight
+
+export type TimeOffType = 'PTO' | 'Sick' | 'Conference' | 'Parental' | 'Other';
+
+export interface TimeOff {
+  id: string;
+  person: string; // PlatformUser.name
+  type: TimeOffType;
+  start: string; // YYYY-MM-DD (inclusive)
+  end: string; // YYYY-MM-DD (inclusive)
+  note?: string;
+  source: 'manual' | 'ics';
+}
+
+export interface SpotlightEntry {
+  id: string;
+  kind: 'team' | 'pet';
+  name: string;
+  subtitle: string; // role, or "Mei's corgi"
+  funFact: string;
+  emoji: string;
+  photo?: string; // small data URL, resized client-side
+  kudos: number;
+  addedBy: string;
+}
+
+export interface Wish {
+  person: string;
+  occasion: 'birthday' | 'anniversary';
+  year: number;
+  from: string;
 }

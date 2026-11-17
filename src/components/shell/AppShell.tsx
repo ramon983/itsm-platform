@@ -3,6 +3,7 @@
 import clsx from 'clsx';
 import {
   AlertOctagon,
+  BarChart3,
   BookOpen,
   Bot,
   ChevronsLeft,
@@ -38,6 +39,7 @@ import type { ModuleKey } from '@/types/platform';
 /** Which module owns each view. A view whose module is off is hidden everywhere. */
 export const VIEW_MODULE: Record<ViewKey, ModuleKey | null> = {
   dashboard: null,
+  reports: 'itsm_core',
   tickets: 'itsm_core',
   problems: 'itsm_core',
   changes: 'itsm_core',
@@ -123,6 +125,7 @@ function Sidebar() {
         { view: 'tickets', label: 'Tickets', icon: TicketIcon, badge: p1 ? `${p1} P1` : String(openTickets.length), tone: p1 ? 'rose' : undefined },
         { view: 'problems', label: 'Problems', icon: AlertOctagon, badge: String(problems.filter((p) => p.status !== 'RESOLVED').length) },
         { view: 'changes', label: 'Changes', icon: GitPullRequestArrow, badge: (() => { const n = Object.values(changeDetails).filter((d) => d.cabStatus === 'PENDING').length; return n ? `${n} CAB` : undefined; })(), tone: 'amber' },
+        { view: 'reports', label: 'Reports', icon: BarChart3 },
         { view: 'knowledge', label: 'Knowledge', icon: BookOpen, badge: gaps ? `${gaps} AI` : undefined, tone: 'amber' },
       ],
     },
@@ -238,7 +241,7 @@ function TopBar() {
   const autonomy = { suggest_only: 'Suggest only', self_service_deflection: 'Self-service', auto_resolve_low_risk: 'Auto-resolve low risk' }[aiSettings.autonomy];
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.08] bg-[#090D16]/80 px-4 backdrop-blur-md">
+    <header className="relative z-30 flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.08] bg-[#090D16]/80 px-4 backdrop-blur-md">
       <button
         type="button"
         onClick={() => openPalette()}

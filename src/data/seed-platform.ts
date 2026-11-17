@@ -9,6 +9,8 @@ import type {
   KbStats,
   PlatformUser,
   Problem,
+  SpotlightEntry,
+  TimeOff,
   SlaPolicy,
   SwarmSquad,
   Ticket,
@@ -61,6 +63,11 @@ const CLOSED: ClosedSeed[] = [
 
 export function createPlatformSeed(now: number) {
   const iso = (ms: number) => new Date(now + ms).toISOString();
+  // Dates relative to "today" so the demo always has something to celebrate this week.
+  const day = (offset: number) => new Date(now + offset * D);
+  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const md = (offset: number) => ymd(day(offset)).slice(5);
+  const started = (yearsAgo: number, offset: number) => { const d = day(offset); d.setFullYear(d.getFullYear() - yearsAgo); return ymd(d); };
 
   const closedTickets: ClosedTicket[] = CLOSED.map(([title, summary, templateId, swarmSquad, resolution, resolvedBy, kbId, assetModel, daysAgo, minutes, firstContact], i) => ({
     id: `${templateId.startsWith('#SR') ? 'SR' : 'INC'}-${templateId.startsWith('#SR') ? 1990 + i : 960 + i}`,
@@ -152,15 +159,16 @@ export function createPlatformSeed(now: number) {
   };
 
   const users: PlatformUser[] = [
-    { name: 'Alex Rivera', email: 'alex.rivera@adminzero.io', role: 'Admin', squad: 'Network & Identity', active: true },
-    { name: 'Sam Okafor', email: 'sam.okafor@adminzero.io', role: 'Approver', squad: 'Network & Identity', active: true },
-    { name: 'Mei Chen', email: 'mei.chen@adminzero.io', role: 'Agent', squad: 'Endpoint & Mac', active: true },
-    { name: 'Diego Torres', email: 'diego.torres@adminzero.io', role: 'Agent', squad: 'Endpoint & Mac', active: true },
-    { name: 'Fatima Khan', email: 'fatima.khan@adminzero.io', role: 'Agent', squad: 'SaaS & Cloud Ops', active: true },
-    { name: 'Jonas Weber', email: 'jonas.weber@adminzero.io', role: 'Agent', squad: 'SaaS & Cloud Ops', active: true },
-    { name: 'Riley Park', email: 'riley.park@adminzero.io', role: 'Approver', squad: 'Security & SIEM', active: true },
-    { name: 'Noor Haddad', email: 'noor.haddad@adminzero.io', role: 'Agent', squad: 'Security & SIEM', active: true },
+    { name: 'Alex Rivera', email: 'alex.rivera@adminzero.io', role: 'Admin', squad: 'Network & Identity', active: true, country: 'US', timezone: 'America/New_York', birthday: md(18), startDate: started(4, 6) },
+    { name: 'Sam Okafor', email: 'sam.okafor@adminzero.io', role: 'Approver', squad: 'Network & Identity', active: true, country: 'GB', timezone: 'Europe/London', birthday: md(3), startDate: started(2, 40) },
+    { name: 'Mei Chen', email: 'mei.chen@adminzero.io', role: 'Agent', squad: 'Endpoint & Mac', active: true, country: 'CA', timezone: 'America/Toronto', birthday: md(0), startDate: started(6, 25) },
+    { name: 'Diego Torres', email: 'diego.torres@adminzero.io', role: 'Agent', squad: 'Endpoint & Mac', active: true, country: 'ES', timezone: 'Europe/Madrid', birthday: md(-1), startDate: started(1, 11) },
+    { name: 'Fatima Khan', email: 'fatima.khan@adminzero.io', role: 'Agent', squad: 'SaaS & Cloud Ops', active: true, country: 'IN', timezone: 'Asia/Kolkata', birthday: md(27), startDate: started(3, 2) },
+    { name: 'Jonas Weber', email: 'jonas.weber@adminzero.io', role: 'Agent', squad: 'SaaS & Cloud Ops', active: true, country: 'DE', timezone: 'Europe/Berlin', birthday: md(45), startDate: started(5, 1) },
+    { name: 'Riley Park', email: 'riley.park@adminzero.io', role: 'Approver', squad: 'Security & SIEM', active: true, country: 'US', timezone: 'America/Los_Angeles', birthday: md(9), startDate: started(7, 20) },
+    { name: 'Noor Haddad', email: 'noor.haddad@adminzero.io', role: 'Agent', squad: 'Security & SIEM', active: true, country: 'FR', timezone: 'Europe/Paris', birthday: md(60), startDate: started(2, 4) },
   ];
+
 
   const slaPolicies: SlaPolicy[] = [
     { priority: 'P1', responseMinutes: 15, resolutionMinutes: 4 * 60 },
@@ -219,5 +227,28 @@ export function createPlatformSeed(now: number) {
     { id: 'aud-1', timestamp: iso(-5 * D), actor: 'Alex Rivera', action: 'Module enabled', entity: 'password_vault', detail: 'Enterprise Password Vault turned on.', category: 'admin' },
   ];
 
-  return { closedTickets, extraTickets, changeDetails, problems, kbStats, users, slaPolicies, automations, customFields, integrations, aiSettings, auditLog };
+  const timeOff: TimeOff[] = [
+    { id: 'to-1', person: 'Diego Torres', type: 'PTO', start: ymd(day(0)), end: ymd(day(4)), note: 'Family trip to Sevilla', source: 'manual' },
+    { id: 'to-2', person: 'Sam Okafor', type: 'Sick', start: ymd(day(0)), end: ymd(day(0)), source: 'manual' },
+    { id: 'to-3', person: 'Fatima Khan', type: 'Conference', start: ymd(day(2)), end: ymd(day(3)), note: 'SaaS Ops Summit', source: 'manual' },
+    { id: 'to-4', person: 'Riley Park', type: 'PTO', start: ymd(day(6)), end: ymd(day(10)), source: 'manual' },
+    { id: 'to-5', person: 'Jonas Weber', type: 'Parental', start: ymd(day(15)), end: ymd(day(40)), note: 'Parental leave 🍼', source: 'manual' },
+  ];
+
+  const spotlight: SpotlightEntry[] = [
+    { id: 'sp-1', kind: 'pet', name: 'Biscuit', subtitle: 'Mei Chen’s corgi', emoji: '🐶', kudos: 14, addedBy: 'Mei Chen',
+      funFact: 'Attends every Friday stand-up and has never once forgotten to unmute.' },
+    { id: 'sp-2', kind: 'team', name: 'Riley Park', subtitle: 'Security & SIEM', emoji: '🏃', kudos: 9, addedBy: 'Noor Haddad',
+      funFact: 'Ran the London Marathon in a shirt that said “Have you tried turning it off and on again?”' },
+    { id: 'sp-3', kind: 'pet', name: 'Nimbus', subtitle: 'Alex Rivera’s cat', emoji: '🐱', kudos: 21, addedBy: 'Alex Rivera',
+      funFact: 'Walked across the keyboard and closed a P4 with a perfect KB link. Promoted to Junior Agent.' },
+    { id: 'sp-4', kind: 'team', name: 'Mei Chen', subtitle: 'Endpoint & Mac', emoji: '🍎', kudos: 12, addedBy: 'Diego Torres',
+      funFact: 'Has imaged over 1,400 MacBooks and can name every macOS release from its wallpaper.' },
+    { id: 'sp-5', kind: 'pet', name: 'Pixel', subtitle: 'Fatima Khan’s parrot', emoji: '🦜', kudos: 17, addedBy: 'Fatima Khan',
+      funFact: 'Greets every visitor with “Did you raise a ticket?”' },
+  ];
+
+  const selectedTools = ['slack', 'zoom', 'microsoft-365', 'google-workspace', 'okta', 'salesforce', 'github', 'jira', 'figma', 'notion', 'claude', 'cloudflare'];
+
+  return { timeOff, spotlight, selectedTools, wishes: [] as import('@/types/platform').Wish[], closedTickets, extraTickets, changeDetails, problems, kbStats, users, slaPolicies, automations, customFields, integrations, aiSettings, auditLog };
 }
