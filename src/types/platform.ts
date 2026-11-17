@@ -58,6 +58,8 @@ export interface HardwareAsset {
   model: string;
   category: 'Laptop' | 'Network' | 'Mobile' | 'Peripheral';
   serialNumber: string;
+  hostname?: string;
+  ipAddress?: string;
   assignedTo: string | null;
   assignedEmail: string | null;
   lifecycle: AssetLifecycle;

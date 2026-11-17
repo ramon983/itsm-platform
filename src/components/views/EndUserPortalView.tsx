@@ -31,6 +31,7 @@ import {
   confirmationMessage,
   detectLanguage,
 } from '@/lib/intake';
+import { API_MODE, postIntake, type IntakeApiResponse } from '@/lib/api';
 import { findDeflectionArticle } from '@/lib/patterns';
 import { usePlatformStore } from '@/store/usePlatformStore';
 import type { EndUserProfile, IntakeAnalysis, IntakeChatMessage } from '@/types/platform';
@@ -41,6 +42,30 @@ const SECTION_COUNT = 6;
 type Phase = 'idle' | 'analyzing' | 'ready' | 'submitted' | 'deflected';
 
 const uid = () => crypto.randomUUID().slice(0, 8);
+const KNOWN_TEMPLATES = ['#INC-NET-04', '#SR-HW-01', '#SR-SAAS-09', '#CHG-SEC-02', '#INC-SEC-01', '#INC-GEN-01'] as const;
+
+/** Claude's answer (live API) layered over the offline analysis, which still supplies CMDB fields and macros. */
+function mergeLive(local: IntakeAnalysis, live: IntakeApiResponse): IntakeAnalysis {
+  const a = live.analysis;
+  const lang = a.detected_language.split('-')[0]!.toLowerCase();
+  return {
+    ...local,
+    detectedLanguage: lang,
+    sentiment: a.sentiment,
+    templateId: (KNOWN_TEMPLATES as readonly string[]).includes(a.selected_template_id) ? (a.selected_template_id as IntakeAnalysis['templateId']) : local.templateId,
+    templateName: a.template_name,
+    ticketType: a.ticket_type,
+    swarmSquad: a.recommended_swarm_group,
+    priority: a.priority,
+    priorityReasons: [`${live.engine === 'claude' ? 'Claude' : 'API offline engine'} urgency ${a.urgency_score}/5 → ${a.priority}`, ...local.priorityReasons.map((r) => `Local check: ${r}`)],
+    englishSummary: a.english_summary_for_agent,
+    requiredApprovals: a.required_approvals,
+    clarifyingQuestion: a.clarifying_question,
+    replyNative: live.reply,
+    replyLanguage: lang,
+    replyEnglish: lang === 'en' ? live.reply : `Agent summary: ${a.english_summary_for_agent}`,
+  };
+}
 
 export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
   const assets = usePlatformStore((s) => s.assets);
@@ -52,6 +77,7 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
   const kbStats = usePlatformStore((s) => s.kbStats);
   const aiSettings = usePlatformStore((s) => s.aiSettings);
   const recordDeflection = usePlatformStore((s) => s.recordDeflection);
+  const [engine, setEngine] = useState<string>(API_MODE === 'live' ? 'Live API' : 'Offline intake mapper');
   const [deflection, setDeflection] = useState<{ kbId: string; title: string; steps: string[]; confidence: number } | null>(null);
 
   const [personaEmail, setPersonaEmail] = useState(END_USERS[0]!.email);
@@ -106,6 +132,19 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
       ? findDeflectionArticle(conversation.filter((m) => m.from === 'user').map((m) => m.translation ?? m.text).join(' '), kbArticles, kbStats, aiSettings.confidenceThreshold)
       : null;
 
+    // Live mode: Claude (via the FastAPI backend) answers; the local mapper is the fallback if the call fails.
+    const livePromise = API_MODE === 'live'
+      ? postIntake({
+          message: trimmed, requester_name: who.name, requester_email: who.email,
+          history: history.map((m) => ({ role: m.from === 'user' ? ('user' as const) : ('assistant' as const), content: m.text })),
+          context: {
+            assets: who.assetIds.map((id) => assets.find((x) => x.id === id)).filter(Boolean).map((x) => ({ id: x!.id, name: x!.name, os: x!.osVersion, filevault: x!.fileVault })),
+            saas_apps: who.saasIds.map((id) => saasApps.find((x) => x.id === id)?.name).filter((x): x is string => !!x),
+            kb_articles: kbArticles.map((k) => ({ id: k.id, title: k.title, summary: k.summary, steps: k.steps })),
+          },
+        }, { assets, saasApps })
+      : null;
+
     setChat(conversation);
     setDeflection(null);
     setInput('');
@@ -116,15 +155,26 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
     setStep(1);
     later(stepMs, () => setStep(2));
     later(stepMs * 2, () => setStep(3));
-    later(stepMs * 3, () => {
+    later(stepMs * 3, async () => {
+      let final = result;
+      if (livePromise) {
+        const res = await livePromise;
+        if (res.ok) {
+          const body = res.body as IntakeApiResponse;
+          final = mergeLive(result, body);
+          setEngine(body.engine === 'claude' ? `Claude · ${body.model ?? ''}` : `API offline engine (${body.fallback_reason ?? 'fallback'})`);
+        } else {
+          setEngine('Offline intake mapper (API unreachable)');
+        }
+      }
       setStep(4);
-      setAnalysis(result);
+      setAnalysis(final);
       setPhase('ready');
       setChat((c) => [
         ...c,
         {
-          id: uid(), from: 'agent', text: result.replyNative, lang: result.replyLanguage,
-          translation: result.replyLanguage !== 'en' ? result.replyEnglish : undefined, timestamp: new Date().toISOString(),
+          id: uid(), from: 'agent', text: final.replyNative, lang: final.replyLanguage,
+          translation: final.replyLanguage !== 'en' ? final.replyEnglish : undefined, timestamp: new Date().toISOString(),
         },
       ]);
       if (match) setDeflection({ kbId: match.article.id, title: match.article.title, steps: match.article.steps, confidence: match.confidence });
@@ -164,8 +214,11 @@ export function EndUserPortalView({ stepMs = 650 }: { stepMs?: number }) {
             <h1 className="text-sm font-semibold tracking-tight">AdminZero Help</h1>
             <p className="text-xs text-slate-500">Write in any language — no forms.</p>
           </div>
-          <span className="rounded-full border border-amber-500/30 px-2 py-0.5 text-[10px] font-medium text-amber-300" title="No AI backend is connected. A deterministic intake mapper runs in your browser; it switches to Claude when the FastAPI backend is configured.">
-            Offline intake mapper
+          <span
+            className={clsx('rounded-full border px-2 py-0.5 text-[10px] font-medium', engine.startsWith('Claude') ? 'border-sky-500/30 text-sky-300' : 'border-amber-500/30 text-amber-300')}
+            title={API_MODE === 'live' ? 'Intake runs on the AdminZero API (Claude, with a deterministic fallback).' : 'No AI backend is configured for this build. A deterministic intake mapper runs in your browser; it switches to Claude when the FastAPI backend URL is set.'}
+          >
+            {engine}
           </span>
           <label className="ml-auto flex items-center gap-2 text-xs text-slate-400">
             Signed in as

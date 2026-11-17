@@ -99,3 +99,20 @@ describe('knowledge → portal deflection', () => {
     expect(usePlatformStore.getState().kbStats[published.id]!.deflections).toBe(1);
   });
 });
+
+describe('admin API playground', () => {
+  it('firing the Sentinel webhook (simulated) creates a P1 linked to MBP-0942 on the board', async () => {
+    const user = userEvent.setup();
+    render(<Home />);
+    await user.click(screen.getByRole('button', { name: /^Admin console/ }));
+    await user.click(screen.getByRole('button', { name: /API & webhooks/ }));
+    expect(screen.getByText(/Simulated in your browser/)).toBeInTheDocument();
+    const before = usePlatformStore.getState().tickets.length;
+    await user.click(screen.getByRole('button', { name: 'Fire live request' }));
+    expect(await screen.findByText(/is on the board/)).toBeInTheDocument();
+    const t = usePlatformStore.getState().tickets[0]!;
+    expect(usePlatformStore.getState().tickets).toHaveLength(before + 1);
+    expect(t).toMatchObject({ priority: 'P1', channel: 'SIEM Webhook', linkedAssetId: 'MBP-0942', swarmSquad: 'Security & SIEM' });
+    expect(t.activeSwarmAgents).toContain('Noor Haddad'); // SIEM automation ran
+  });
+});

@@ -53,3 +53,27 @@ npm run build      # static export → out/
 ```
 
 The rules every phase must follow are in [`CLAUDE.md`](CLAUDE.md).
+
+## Backend (Phase 5): FastAPI + Claude + Google Cloud Secret Manager
+The backend lives in `backend/`. The entry point is `main.py` (`uvicorn main:app`).
+
+| Endpoint | What it does |
+|---|---|
+| `GET /api/v1/health` | Where secrets come from (Secret Manager or `.env.local`), which ones resolved (names only, never values), and the AI engine in use |
+| `POST /api/v1/tickets/intake` | Conversational Intake Agent: Claude Opus 5.5 with **Runtime System Prompt 1**, returned as structured JSON |
+| `POST /api/v1/agent/assist` | Agent-Assist Copilot: **Runtime System Prompt 2**. Recommendations without a KB citation are removed. |
+| `POST /api/v1/siem/webhook?source=sentinel\|splunk\|datadog` | HMAC-SHA256 signed and replay-protected. Correlates the alert to the CMDB and returns a ready-to-create P1. |
+| `GET /api/v1/saas/discovery` | SaaS spend, seats and reclaimable savings |
+
+- **Secrets:** `ANTHROPIC_API_KEY`, `DATABASE_URL`, `SIEM_WEBHOOK_SECRET` and `VAULT_KMS_KEY` are read at runtime with `SecretManagerServiceClient`. `.env.local` is only used in development; anywhere else, starting without `GCP_PROJECT_ID` is an error.
+- **When Claude is unavailable** (no key, an outage, a refusal or rate limiting), both AI endpoints return deterministic structured answers in the same response shape. Claude's own refusals first go through the API's server-side fallback model.
+- **Develop:** `cd backend && cp .env.local.example .env.local && uv sync && uv run uvicorn main:app --reload --port 8080`. Tests: `uv run pytest`.
+
+### Deploy to Cloud Run
+1. `PROJECT_ID=<gcp-project> REGION=us-central1 ./backend/scripts/setup_gcp.sh` creates the Artifact Registry repo, the service accounts, the secrets (it prompts for their values) and keyless GitHub OIDC (Workload Identity Federation). It then prints the repo variables to set.
+2. Push to `develop`. `.github/workflows/deploy.yml` tests, builds and deploys `adminzero-api-dev`; pushing to `main` deploys `adminzero-api`. The deploy step skips until those variables exist.
+3. The service is **private by default**. To let the public GitHub Pages dashboard call it, you would have to run `gcloud run services add-iam-policy-binding adminzero-api-dev --region us-central1 --member=allUsers --role=roles/run.invoker`. Only do that knowingly: the AI endpoints are rate-limited per IP, but they still spend Anthropic credit.
+4. Set the `ADMINZERO_API_URL` repo variable to the service URL. The next Pages build switches the dashboard from browser simulation to the live API.
+
+### Admin → API & webhooks
+The playground lets you edit a payload, fire it, and watch a correlated P1 appear on the board. It shows the HMAC headers, the status, the latency and a `curl` equivalent. The signing secret is typed into the page and never stored. With no backend configured, the same contract runs in the browser and is labelled **Simulated**.

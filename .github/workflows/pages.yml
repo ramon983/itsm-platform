@@ -30,6 +30,9 @@ jobs:
         run: npm run build
         env:
           PAGES_BASE_PATH: /itsm-platform
+          # Set the ADMINZERO_API_URL repo variable to the Cloud Run URL to switch the dashboard from
+          # in-browser simulation to the live API. Empty = offline demo mode.
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.ADMINZERO_API_URL }}
       - run: touch out/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

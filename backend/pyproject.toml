@@ -1,0 +1,33 @@
+[project]
+name = "adminzero-api"
+version = "0.5.0"
+description = "AdminZero backend: Claude-powered intake & agent assist, signed SIEM webhook, SaaS discovery. Secrets from Google Cloud Secret Manager."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "anthropic>=0.70",
+    "google-cloud-secret-manager>=2.20",
+    "python-dotenv>=1.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "httpx>=0.27", "ruff>=0.6"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+# `ruff format` owns line length; long literals (verbatim prompts, localized replies) must not be split.
+ignore = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query"]

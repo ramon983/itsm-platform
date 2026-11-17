@@ -29,6 +29,7 @@ import { JitAccessModal } from '@/components/inspectors/JitAccessModal';
 import { SaasInspectorDrawer } from '@/components/inspectors/SaasInspectorDrawer';
 import { TicketInspectorDrawer } from '@/components/tickets/TicketInspectorDrawer';
 import { Button, Kbd, Modal, Toaster } from '@/components/ui/primitives';
+import { useApiHealth } from '@/hooks/useApiHealth';
 import { useNow } from '@/hooks/useNow';
 import { detectPatterns } from '@/lib/patterns';
 import { MODULE_LABEL, usePlatformStore, type ViewKey } from '@/store/usePlatformStore';
@@ -228,7 +229,11 @@ function TopBar() {
   const aiSettings = usePlatformStore((s) => s.aiSettings);
   const setView = usePlatformStore((s) => s.setView);
   const [secretsOpen, setSecretsOpen] = useState(false);
+  const apiHealth = useApiHealth();
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const resolved = apiHealth.state === 'up' ? apiHealth.health.secrets.resolved : null;
+  const viaGcp = apiHealth.state === 'up' && apiHealth.health.secrets.source === 'gcp_secret_manager';
+  const tone = viaGcp ? 'good' : apiHealth.state === 'down' ? 'bad' : 'warn';
   const enabled = (Object.keys(MODULE_LABEL) as ModuleKey[]).filter((m) => flags[m]).length;
   const autonomy = { suggest_only: 'Suggest only', self_service_deflection: 'Self-service', auto_resolve_low_risk: 'Auto-resolve low risk' }[aiSettings.autonomy];
 
@@ -257,26 +262,30 @@ function TopBar() {
           <button
             type="button"
             onClick={() => setSecretsOpen((v) => !v)}
-            className={clsx('flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium', apiBase ? 'border-emerald-500/30 text-emerald-300' : 'border-amber-500/30 text-amber-300')}
+            className={clsx('flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium', tone === 'good' ? 'border-emerald-500/30 text-emerald-300' : tone === 'bad' ? 'border-rose-500/30 text-rose-300' : 'border-amber-500/30 text-amber-300')}
             aria-expanded={secretsOpen}
           >
             <ShieldCheck className="size-3.5" />
-            <span className={clsx('size-1.5 rounded-full', apiBase ? 'bg-emerald-400' : 'bg-amber-400')} />
+            <span className={clsx('size-1.5 rounded-full', tone === 'good' ? 'bg-emerald-400' : tone === 'bad' ? 'bg-rose-400' : 'bg-amber-400')} />
             Secret Manager
           </button>
           {secretsOpen && (
             <div className="az-pop-in absolute right-0 top-9 z-30 w-80 rounded-xl border border-white/[0.1] bg-[#0f1424] p-3.5 text-xs shadow-2xl">
               <p className="font-semibold text-slate-100">Google Cloud Secret Manager</p>
               <p className="mt-1 text-slate-400">
-                {apiBase
-                  ? `Backend ${apiBase} resolves every secret from Secret Manager at startup.`
-                  : 'Browser demo mode: no backend is connected, so no secrets are loaded. The FastAPI backend reads these from Secret Manager (.env.local only for offline dev):'}
+                {apiHealth.state === 'up'
+                  ? `${apiBase} — secrets from ${viaGcp ? 'Google Cloud Secret Manager' : '.env.local (development fallback)'} · AI: ${apiHealth.health.ai.engine === 'claude' ? apiHealth.health.ai.model : 'offline engine'}`
+                  : apiHealth.state === 'down'
+                    ? `${apiBase} is unreachable (${apiHealth.error}). The dashboard keeps working on local state.`
+                    : apiHealth.state === 'checking'
+                      ? `Checking ${apiBase}…`
+                      : 'Browser demo mode: no backend is configured for this build, so no secrets are loaded. The FastAPI backend reads these from Secret Manager (.env.local only for offline dev):'}
               </p>
               <ul className="mt-2 space-y-1">
                 {['ANTHROPIC_API_KEY', 'DATABASE_URL', 'SIEM_WEBHOOK_SECRET', 'VAULT_KMS_KEY'].map((name) => (
                   <li key={name} className="flex items-center justify-between rounded-md bg-white/[0.03] px-2 py-1">
                     <span className="font-mono text-slate-300">{name}</span>
-                    <span className={apiBase ? 'text-emerald-300' : 'text-slate-500'}>{apiBase ? 'resolved' : 'not loaded'}</span>
+                    <span className={resolved?.[name] ? 'text-emerald-300' : resolved ? 'text-rose-300' : 'text-slate-500'}>{resolved ? (resolved[name] ? 'resolved' : 'missing') : 'not loaded'}</span>
                   </li>
                 ))}
               </ul>

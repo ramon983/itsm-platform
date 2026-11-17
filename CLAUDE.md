@@ -68,7 +68,7 @@ Never generate generic Bootstrap-style admin tables.
 2. Multilingual end-user chat portal and live template mapper (`EndUserPortalView.tsx`). ✅ Offline deterministic mapper in `src/lib/intake.ts`; Phase 5 swaps in Claude.
 3. Omnichannel agent workspace and grounded agent-assist copilot (`AgentWorkspaceView.tsx`).
 4. Torii-style SaaS governance and hardware/software ITAM (`AssetsSaasView.tsx`).
-5. Admin console, password vault, Open API / SIEM playground, FastAPI + Secret Manager + Cloud Run backend.
+5. Admin console, password vault, Open API / SIEM playground, FastAPI + Secret Manager + Cloud Run backend. ✅
 
 ## Commands
 - `npm run dev` — local dev server

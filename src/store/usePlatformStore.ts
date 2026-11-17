@@ -25,6 +25,7 @@ import {
 import { liveSlaSeconds } from '@/lib/sla';
 import { ruleMatches, describeAction } from '@/lib/automation';
 import { scoreChange } from '@/lib/changes';
+import type { SiemApiResponse } from '@/lib/api';
 import { INTAKE_AGENT_NAME, LANGUAGE_NAMES } from '@/lib/intake';
 import { findDeflectionArticle } from '@/lib/patterns';
 import type {
@@ -104,6 +105,7 @@ export interface PlatformState extends SeedState, UiState {
   grantJitAccess: (vaultId: string, ticketId: string, agentName: string) => ActionResult;
   revokeJitAccess: (vaultId: string) => ActionResult;
   simulateSentinelAlert: () => string;
+  ingestSiemAlert: (alert: SiemApiResponse, via: 'live' | 'simulated') => string | null;
   createTicketFromIntake: (input: { requester: EndUserProfile; analysis: IntakeAnalysis; conversation: IntakeChatMessage[] }) => string;
   toggleFlag: (key: ModuleKey) => ActionResult;
   awardXp: (amount: number, reason: string) => void;
@@ -915,6 +917,44 @@ export const usePlatformStore = create<PlatformState>()(
           audit('admin', 'AI settings changed', 'ai', JSON.stringify(patch));
           get().pushToast({ tone: 'success', title: 'AI settings saved' });
           return { ok: true };
+        },
+
+        // ------------------------------------------------------------ SIEM webhook (live API or simulated)
+        ingestSiemAlert: (alert, via) => {
+          const vendor = { sentinel: 'Microsoft Sentinel', splunk: 'Splunk', datadog: 'Datadog' } as const;
+          addTelemetry({
+            source: vendor[alert.source], severity: alert.severity === 'critical' ? 'critical' : alert.severity === 'high' ? 'high' : alert.severity === 'medium' ? 'medium' : 'info',
+            title: alert.title, detail: `Webhook ${alert.alert_id} (${via}) · ${alert.matched_assets.length ? `matched ${alert.matched_assets.map((a) => a.id).join(', ')}` : 'no CMDB match'}`,
+            assetId: alert.matched_assets[0]?.id,
+          });
+          const inc = alert.incident;
+          if (!inc) {
+            audit('ticket', 'SIEM alert logged (no incident)', alert.alert_id, `${alert.severity} · ${alert.title}`, vendor[alert.source]);
+            return null;
+          }
+          const id = nextTicketId('INCIDENT', get().tickets);
+          const now = Date.now();
+          const ticket: Ticket = {
+            id, type: 'INCIDENT', templateId: inc.template_id, title: inc.title, requesterName: inc.requester_name, requesterEmail: inc.requester_email,
+            detectedLanguage: 'en', channel: 'SIEM Webhook', priority: inc.priority, sentiment: 'Urgent Client Impact', status: 'AI_TRIAGED',
+            swarmSquad: inc.swarm_squad, activeSwarmAgents: [AGENTS.find((a) => a.squad === inc.swarm_squad)!.name],
+            slaRemainingSeconds: slaTarget(inc.priority), slaPaused: false, linkedAssetId: inc.linked_asset_id ?? undefined,
+            recommendedMacro: inc.recommended_macro ?? undefined,
+            messages: [
+              { id: uid('msg'), sender: vendor[alert.source], role: 'diagnostic_telemetry', originalLang: 'en', timestamp: nowIso(), originalText: inc.summary,
+                metadata: { source: vendor[alert.source], severity: alert.severity, alertId: alert.alert_id, via } },
+            ],
+          };
+          set((st) => ({
+            tickets: [ticket, ...st.tickets],
+            slaAnchors: { ...st.slaAnchors, [id]: now },
+            assets: st.assets.map((a) => (a.id === inc.linked_asset_id ? { ...a, linkedTicketIds: [...a.linkedTicketIds, id] } : a)),
+          }));
+          audit('ticket', 'SIEM incident created', id, `${alert.alert_id} · ${alert.title} (${via})`, vendor[alert.source]);
+          get().pushToast({ tone: 'error', title: `${inc.priority} ${id} created`, detail: inc.title });
+          runAutomations('siem_alert', id);
+          runAutomations('ticket_created', id);
+          return id;
         },
 
         // ------------------------------------------------------------ platform

@@ -473,7 +473,7 @@ export function createSeedState(now: number = Date.now()): SeedState {
 
   const assets: HardwareAsset[] = [
     {
-      id: 'MBP-0942', name: 'MacBook Pro 14" M3 Pro', model: 'Mac15,6', category: 'Laptop',
+      id: 'MBP-0942', hostname: 'maria-mbp', ipAddress: '10.20.4.42', name: 'MacBook Pro 14" M3 Pro', model: 'Mac15,6', category: 'Laptop',
       serialNumber: 'C02FK3ZHMD6T', assignedTo: 'María González', assignedEmail: 'maria.gonzalez@adminzero.io',
       lifecycle: 'Deployed', mdmEnrolled: true, fileVault: 'Encrypted', osVersion: 'macOS 15.4',
       appleCareExpires: '2027-08-02', location: 'Madrid · Remote',
@@ -482,7 +482,7 @@ export function createSeedState(now: number = Date.now()): SeedState {
       linkedTicketIds: ['INC-1049'],
     },
     {
-      id: 'MBP-1004', name: 'MacBook Pro 16" M3 Max', model: 'Mac15,9', category: 'Laptop',
+      id: 'MBP-1004', hostname: 'camille-mbp', ipAddress: '10.30.2.17', name: 'MacBook Pro 16" M3 Max', model: 'Mac15,9', category: 'Laptop',
       serialNumber: 'C02GT1ABQ05D', assignedTo: 'Camille Laurent', assignedEmail: 'camille.laurent@adminzero.io',
       lifecycle: 'In Repair', mdmEnrolled: true, fileVault: 'Encrypted', osVersion: 'macOS 15.3',
       appleCareExpires: '2027-03-14', location: 'Paris HQ',
@@ -491,7 +491,7 @@ export function createSeedState(now: number = Date.now()): SeedState {
       linkedTicketIds: ['INC-1046'],
     },
     {
-      id: 'MBP-1188', name: 'MacBook Air 13" M3', model: 'Mac15,12', category: 'Laptop',
+      id: 'MBP-1188', hostname: 'priya-mba', ipAddress: '10.40.1.88', name: 'MacBook Air 13" M3', model: 'Mac15,12', category: 'Laptop',
       serialNumber: 'FVFHK2Q1Q6L4', assignedTo: 'Priya Shah', assignedEmail: 'priya.shah@adminzero.io',
       lifecycle: 'Deployed', mdmEnrolled: true, fileVault: 'Encrypted', osVersion: 'macOS 15.4',
       appleCareExpires: '2026-12-30', location: 'London',
@@ -500,7 +500,7 @@ export function createSeedState(now: number = Date.now()): SeedState {
       linkedTicketIds: ['INC-1047'],
     },
     {
-      id: 'MBP-1120', name: 'MacBook Pro 14" M3 (Loaner)', model: 'Mac15,3', category: 'Laptop',
+      id: 'MBP-1120', hostname: 'loaner-1120', name: 'MacBook Pro 14" M3 (Loaner)', model: 'Mac15,3', category: 'Laptop',
       serialNumber: 'C02HN8LLMD6R', assignedTo: null, assignedEmail: null,
       lifecycle: 'In Stock', mdmEnrolled: true, fileVault: 'Encrypted', osVersion: 'macOS 15.4',
       appleCareExpires: '2028-01-19', location: 'Paris HQ · IT Bar',
@@ -509,7 +509,7 @@ export function createSeedState(now: number = Date.now()): SeedState {
       linkedTicketIds: [],
     },
     {
-      id: 'MERAKI-SW-01', name: 'Meraki MS250-48FP Core Switch', model: 'MS250-48FP', category: 'Network',
+      id: 'MERAKI-SW-01', hostname: 'lis-f3-core', ipAddress: '10.50.0.1', name: 'Meraki MS250-48FP Core Switch', model: 'MS250-48FP', category: 'Network',
       serialNumber: 'Q2QN-7Y4L-9TZK', assignedTo: null, assignedEmail: null,
       lifecycle: 'Deployed', mdmEnrolled: false, fileVault: 'N/A', osVersion: 'MS 16.8',
       appleCareExpires: null, location: 'Lisbon · Floor 3 IDF',
@@ -518,7 +518,7 @@ export function createSeedState(now: number = Date.now()): SeedState {
       linkedTicketIds: ['INC-1045'],
     },
     {
-      id: 'IPH-0311', name: 'iPhone 15 Pro', model: 'iPhone16,1', category: 'Mobile',
+      id: 'IPH-0311', hostname: 'lukas-iphone', name: 'iPhone 15 Pro', model: 'iPhone16,1', category: 'Mobile',
       serialNumber: 'F4GZK9P2N7', assignedTo: 'Lukas Becker', assignedEmail: 'lukas.becker@adminzero.io',
       lifecycle: 'Procured', mdmEnrolled: false, fileVault: 'N/A', osVersion: 'iOS 18.4',
       appleCareExpires: '2028-05-01', location: 'Berlin · in transit',

@@ -13,6 +13,7 @@ import {
   ListChecks,
   Lock,
   Plug,
+  Terminal,
   Plus,
   ShieldCheck,
   Trash2,
@@ -23,8 +24,10 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import { ApiPlayground } from '@/components/admin/ApiPlayground';
 import { Button, Card, Field, StatusBadge, inputClass } from '@/components/ui/primitives';
 import { CURRENT_AGENT } from '@/data/seed';
+import { useApiHealth } from '@/hooks/useApiHealth';
 import { useNow } from '@/hooks/useNow';
 import { ACTION_LABEL, FIELD_LABEL, FIELD_OPTIONS, TRIGGER_LABEL } from '@/lib/automation';
 import { timeAgo } from '@/lib/metrics';
@@ -52,6 +55,7 @@ const TABS = [
   ['fields', ListChecks, 'Fields & statuses'],
   ['ai', Bot, 'AI & grounding'],
   ['integrations', Plug, 'Integrations'],
+  ['api', Terminal, 'API & webhooks'],
   ['audit', FileClock, 'Audit log'],
 ] as const;
 type Tab = (typeof TABS)[number][0];
@@ -86,6 +90,7 @@ export function AdminView() {
           {tab === 'fields' && <FieldsTab />}
           {tab === 'ai' && <AiTab />}
           {tab === 'integrations' && <IntegrationsTab />}
+          {tab === 'api' && <ApiPlayground />}
           {tab === 'audit' && <AuditTab />}
         </div>
       </div>
@@ -499,17 +504,20 @@ function AiTab() {
 function IntegrationsTab() {
   const integrations = usePlatformStore((s) => s.integrations);
   const toggle = usePlatformStore((s) => s.toggleIntegration);
+  const apiHealth = useApiHealth();
+  // Secret Manager status is reported by the live backend, not toggled by hand.
+  const smConnected = apiHealth.state === 'up' && apiHealth.health.secrets.source === 'gcp_secret_manager';
   return (
     <Section title="Integrations" description="Lightweight connectors — no consultants. Employees can raise and follow tickets from Slack and Teams.">
       <div className="grid gap-3 md:grid-cols-2">
         {integrations.map((i) => (
           <Card key={i.key} className="flex items-start gap-3 p-4">
-            <span className={clsx('mt-0.5 size-2.5 shrink-0 rounded-full', i.connected ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-slate-600')} />
+            <span className={clsx('mt-0.5 size-2.5 shrink-0 rounded-full', (i.key === 'secret_manager' ? smConnected : i.connected) ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]' : 'bg-slate-600')} />
             <div className="min-w-0 flex-1">
               <p className="font-medium text-slate-100">{i.name} <span className="ml-1 text-[11px] font-normal text-slate-500">{i.category}</span></p>
               <p className="mt-0.5 text-xs text-slate-400">{i.detail}</p>
             </div>
-            <Toggle checked={i.connected} onChange={() => toggle(i.key)} label={`${i.name} connected`} disabled={i.key === 'secret_manager'} />
+            <Toggle checked={i.key === 'secret_manager' ? smConnected : i.connected} onChange={() => toggle(i.key)} label={`${i.name} connected`} disabled={i.key === 'secret_manager'} />
           </Card>
         ))}
       </div>

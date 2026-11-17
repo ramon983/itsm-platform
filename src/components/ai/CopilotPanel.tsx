@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { BookOpen, Check, ChevronDown, Globe, History, Lightbulb, ShieldCheck, Sparkles, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { ClaudeAssistCard } from '@/components/ai/ClaudeAssistCard';
 import { Button, Kbd } from '@/components/ui/primitives';
 import { runCopilot, type CopilotSubject } from '@/lib/copilot';
 import { formatDuration } from '@/lib/metrics';
@@ -190,6 +191,8 @@ export function CopilotPanel({ subject, kind, onInsertDraft, onInsertSteps, onRe
           <Button size="sm" className="mt-2" onClick={() => onInsertDraft(result.draftReply)} disabled={disabled}>Use draft</Button>
         </div>
       )}
+
+      <ClaudeAssistCard subject={subject} similar={result.similar} />
 
       {result.internetFallback && (
         <p className="flex gap-1.5 rounded-lg border border-sky-500/15 bg-sky-500/[0.05] p-2.5 text-[11px] text-sky-100">
