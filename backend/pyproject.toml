@@ -1,31 +1,19 @@
 [project]
-name = "adminzero"
-version = "0.1.0"
-description = "AdminZero — modular, human-centric ITSM, SaaS management, ITAM and JIT vault platform"
+name = "adminzero-api"
+version = "0.5.0"
+description = "AdminZero backend: Claude-powered intake & agent assist, signed SIEM webhook, SaaS discovery. Secrets from Google Cloud Secret Manager."
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "pydantic[email]>=2.8",
-    "pydantic-settings>=2.4",
-    "sqlalchemy[asyncio]>=2.0.30",
-    "asyncpg>=0.29",
-    "redis>=5.0",
-    "strawberry-graphql[fastapi]>=0.240",
+    "pydantic>=2.8",
     "anthropic>=0.70",
     "google-cloud-secret-manager>=2.20",
     "python-dotenv>=1.0",
 ]
 
 [dependency-groups]
-dev = [
-    "pytest>=8.3",
-    "pytest-asyncio>=0.24",
-    "httpx>=0.27",
-    "aiosqlite>=0.20",
-    "ruff>=0.6",
-    "mypy>=1.11",
-]
+dev = ["pytest>=8.3", "pytest-asyncio>=0.24", "httpx>=0.27", "ruff>=0.6"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -33,20 +21,13 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 
 [tool.ruff]
-line-length = 120
+line-length = 140
 target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "ASYNC"]
-
-[tool.mypy]
-python_version = "3.12"
-strict = true
-plugins = ["pydantic.mypy"]
-ignore_missing_imports = true
+# `ruff format` owns line length; long literals (verbatim prompts, localized replies) must not be split.
+ignore = ["E501"]
 
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header", "app.core.auth.require_roles"]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/*" = ["E501"]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query"]

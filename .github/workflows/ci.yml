@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Accessibility gate — axe-core in real Chrome (11 pages × dark/light/high-contrast)
+        run: |
+          (cd out && python3 -m http.server 4321 >/dev/null 2>&1 &)
+          google-chrome --headless=new --remote-debugging-port=9333 --no-sandbox --disable-gpu about:blank >/dev/null 2>&1 &
+          for i in $(seq 1 30); do curl -s http://127.0.0.1:9333/json/version >/dev/null && break; sleep 1; done
+          npm run a11y
+      - name: Build container image
+        run: docker build -t adminzero-web:${{ github.sha }} .
+
+  api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.12'
+      - run: uv sync --frozen
+      - run: uv run ruff check . && uv run ruff format --check .
+      - run: uv run pytest -q
+      - name: Build API container
+        run: docker build -t adminzero-api:${{ github.sha }} .

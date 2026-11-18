@@ -1,22 +1,25 @@
-name: test-and-deploy
+name: deploy-api
 
+# Builds the FastAPI backend, pushes it to Artifact Registry and deploys to Cloud Run using keyless
+# OIDC (Workload Identity Federation). develop → adminzero-api-dev, main → adminzero-api.
+# The job skips cleanly until the GCP repository variables exist (run backend/scripts/setup_gcp.sh).
 on:
-  pull_request:
   push:
-    branches: [main, develop]
+    branches: [develop, main]
+    paths: ['backend/**', '.github/workflows/deploy.yml']
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 env:
-  # Set these as GitHub repository *variables* (not secrets — none of them are sensitive).
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   GCP_REGION: ${{ vars.GCP_REGION }}
   AR_REPO: ${{ vars.ARTIFACT_REGISTRY_REPO }}
-  SERVICE: adminzero-api
-  WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}          # projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>
-  DEPLOY_SA: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}   # deployer@<project>.iam.gserviceaccount.com
-  RUNTIME_SA: ${{ vars.RUNTIME_SERVICE_ACCOUNT }} # adminzero-run@<project>.iam.gserviceaccount.com
+  WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+  DEPLOY_SA: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+  RUNTIME_SA: ${{ vars.RUNTIME_SERVICE_ACCOUNT }}
+  SERVICE: ${{ github.ref == 'refs/heads/main' && 'adminzero-api' || 'adminzero-api-dev' }}
 
 jobs:
   test:
@@ -28,33 +31,34 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
       - run: uv sync --frozen
-      - run: uv run ruff check .
+      - run: uv run ruff check . && uv run ruff format --check .
       - run: uv run pytest -q
-
-  build-image:
-    # Verifies the container builds on develop and PRs. No GCP credentials needed; nothing is pushed.
-    needs: test
-    if: github.ref != 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: docker build -t adminzero-api:${{ github.sha }} backend
-      - run: docker build -t adminzero-site:${{ github.sha }} .   # Nginx static site (prototype)
 
   deploy:
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: production
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     permissions:
       contents: read
-      id-token: write # keyless OIDC → Workload Identity Federation; no JSON keys anywhere
+      id-token: write # keyless OIDC → Workload Identity Federation
     steps:
+      - name: Check GCP configuration
+        id: cfg
+        run: |
+          if [ -z "$GCP_PROJECT_ID" ] || [ -z "$WIF_PROVIDER" ]; then
+            echo "::notice::GCP variables not set yet — run backend/scripts/setup_gcp.sh, then add the repo variables. Skipping deploy."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.cfg.outputs.ready == 'true'
 
       - id: auth
+        if: steps.cfg.outputs.ready == 'true'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
@@ -62,27 +66,38 @@ jobs:
           token_format: access_token
 
       - uses: docker/login-action@v3
+        if: steps.cfg.outputs.ready == 'true'
         with:
           registry: ${{ env.GCP_REGION }}-docker.pkg.dev
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
       - name: Build and push
+        if: steps.cfg.outputs.ready == 'true'
         run: |
           IMAGE="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/${SERVICE}:${GITHUB_SHA}"
           docker build -t "$IMAGE" backend
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
-      - uses: google-github-actions/deploy-cloudrun@v2
+      - id: deploy
+        if: steps.cfg.outputs.ready == 'true'
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE }}
           region: ${{ env.GCP_REGION }}
           image: ${{ env.IMAGE }}
           flags: >-
             --service-account=${{ env.RUNTIME_SA }}
-            --no-allow-unauthenticated
-            --min-instances=1
+            --min-instances=0
+            --max-instances=3
           env_vars: |
-            ADMINZERO_ENV=production
+            ADMINZERO_ENV=${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
             GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}
+            ADMINZERO_ALLOWED_ORIGINS=https://ramon983.github.io,http://localhost:3000
+
+      - name: Summary
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          echo "Deployed ${SERVICE}: ${{ steps.deploy.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "The service is private (IAM-protected) by default. See README → Backend to expose it to the dashboard." >> "$GITHUB_STEP_SUMMARY"
